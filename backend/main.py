@@ -1,13 +1,24 @@
 from fastapi import FastAPI
-from database import Base, engine
-from routes.games import router as games_router
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.database import Base, engine
+from backend.models.game import Game
+from backend.routes.games import router as games_router
 
 app = FastAPI(title="PlayTarget API")
 
-Base.metadata.create_all(bind=engine)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+Base.metada.create_all(bind=engine)
 
 app.include_router(games_router)
 
 @app.get("/")
-def home():
-    return {"message": "PlayTarget API está rodando"}
+def root():
+    return {"message": "API PlayTarget rodando com sucesso"}
+

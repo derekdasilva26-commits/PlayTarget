@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from database import SessionLocal
+from database  import SessionLocal
 from models.game import Game
-from schemas.game import GameCreate, GameResponse
+from schemas.game import GameCreate
 
-router = APIRouter(prefix="/games", tags=["Games"])
+router = APIRouter(prefix="/games",tags=["Games"])
 
 def get_db():
     db = SessionLocal()
@@ -14,14 +14,14 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", response_model=GameResponse)
+@router.post("/")
 def create_game(game: GameCreate, db: Session = Depends(get_db)):
-    db_game = Game(**game.dict())
-    db.add(db_game)
+    new_game = Game(**game.dict())
+    db.add(new_game)
     db.commit()
-    db.refresh(db_game)
-    return db_game
+    db.refresh(new_game)
+    return new_game
 
-@router.get("/", response_model=list[GameResponse])
+@router.get("/")
 def list_games(db: Session = Depends(get_db)):
     return db.query(Game).all()
