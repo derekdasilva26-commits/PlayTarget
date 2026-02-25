@@ -6,7 +6,7 @@ class GameBase(BaseModel):
     price: float
 
 class GameCreate(GameBase):
-    pass
+    id: int
 
 class GameResponse(GameBase):
     id: int
