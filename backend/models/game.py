@@ -6,9 +6,9 @@ class Game(Base):
     __tablename__ = "games"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), unique=True, index=True,nullable=False)
+    title = Column(String(255), unique=True, index=True, nullable=False)
     genre = Column(String(100), nullable=False)
-    description = Column(String(500))
+    description = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
