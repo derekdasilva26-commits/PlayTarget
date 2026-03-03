@@ -1,0 +1,30 @@
+@"
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.log
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite (local)
+playtarget.db
+*.db
+
+# Test/coverage
+.pytest_cache/
+.coverage
+htmlcov/
+"@ | Set-Content -Encoding UTF8 .gitignore
