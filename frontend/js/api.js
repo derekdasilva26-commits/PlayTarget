@@ -79,10 +79,22 @@ async function fetchGames() {
       <p class="text-sm text-gray-600">${game.genre}</p>
       <p class="mt-2">${game.description || ""}</p>
 
-      <button data-game-id="${game.id}"
-        class="mt-3 bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 view-prices-btn">
-        Ver Preços
-      </button>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button data-game-id="${game.id}"
+          class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 view-prices-btn">
+          Ver Preços
+        </button>
+
+        <button data-game-id="${game.id}"
+          class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 edit-game-btn">
+          Editar
+        </button>
+
+        <button data-game-id="${game.id}"
+          class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 delete-game-btn">
+          Remover
+        </button>
+      </div>
 
       <div id="prices-${game.id}" class="mt-3 text-sm text-gray-700"></div>
     `;
@@ -90,11 +102,24 @@ async function fetchGames() {
     gamesList.appendChild(div);
   });
 
-  // Registrar clique do botão "Ver Preços"
   document.querySelectorAll(".view-prices-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = Number(btn.getAttribute("data-game-id"));
       await loadPrices(id);
+    });
+  });
+
+  document.querySelectorAll(".delete-game-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.getAttribute("data-game-id"));
+      await deleteGame(id);
+    });
+  });
+
+  document.querySelectorAll(".edit-game-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.getAttribute("data-game-id"));
+      await editGame(id);
     });
   });
 }
@@ -151,13 +176,38 @@ async function fetchSites() {
           ? "<span class='text-green-700 font-semibold'>Ativo</span>"
           : "<span class='text-red-700 font-semibold'>Inativo</span>"
       }</p>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button data-site-id="${site.id}"
+          class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 edit-site-btn">
+          Editar
+        </button>
+
+        <button data-site-id="${site.id}"
+          class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 delete-site-btn">
+          Remover
+        </button>
+      </div>
     `;
 
     sitesList.appendChild(div);
   });
 
-  // atualiza cache para usar no loadPrices()
   sitesCache = new Map(sites.map((s) => [s.id, s]));
+
+  document.querySelectorAll(".delete-site-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.getAttribute("data-site-id"));
+      await deleteSite(id);
+    });
+  });
+
+  document.querySelectorAll(".edit-site-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.getAttribute("data-site-id"));
+      await editSite(id);
+    });
+  });
 }
 
 if (siteForm) {
@@ -182,7 +232,6 @@ if (siteForm) {
     }
 
     siteForm.reset();
-    // manter "Ativo" marcado por padrão
     const active = document.getElementById("siteActive");
     if (active) active.checked = true;
 
@@ -202,14 +251,12 @@ async function loadPrices(gameId) {
 
   pricesDiv.innerHTML = "Carregando...";
 
-  // garante que temos nomes das plataformas
   if (!sitesCache || sitesCache.size === 0) {
     await refreshSitesCache();
   }
 
   const response = await fetch(`${API_URL}/prices/game/${gameId}`);
 
-  // seu backend retorna 404 se não tiver preços
   if (response.status === 404) {
     pricesDiv.innerHTML = "Nenhum preço cadastrado.";
     return;
@@ -277,7 +324,6 @@ async function refreshPriceFormOptions() {
     priceSiteId.appendChild(opt);
   });
 
-  // atualiza cache para o loadPrices
   sitesCache = new Map(sites.map((s) => [s.id, s]));
 }
 
@@ -318,7 +364,108 @@ if (priceForm) {
     if (priceResult) priceResult.textContent = "Preço cadastrado com sucesso!";
     priceForm.reset();
     if (priceCurrency) priceCurrency.value = "BRL";
+
+    await loadPrices(payload.game_id);
   });
+}
+
+// ==========================
+// EDITAR / REMOVER JOGO
+// ==========================
+async function deleteGame(gameId) {
+  const ok = confirm("Tem certeza que deseja remover este jogo?");
+  if (!ok) return;
+
+  const res = await fetch(`${API_URL}/games/${gameId}`, { method: "DELETE" });
+  if (!res.ok) {
+    alert(`Erro ao remover jogo: ${await safeText(res)}`);
+    return;
+  }
+
+  await fetchGames();
+  await refreshPriceFormOptions();
+}
+
+async function editGame(gameId) {
+  const resGame = await fetch(`${API_URL}/games/${gameId}`);
+  if (!resGame.ok) {
+    alert("Não consegui carregar o jogo para editar.");
+    return;
+  }
+  const game = await resGame.json();
+
+  const title = prompt("Novo título:", game.title);
+  if (title === null) return;
+
+  const genre = prompt("Novo gênero:", game.genre || "");
+  if (genre === null) return;
+
+  const description = prompt("Nova descrição:", game.description || "");
+  if (description === null) return;
+
+  const res = await fetch(`${API_URL}/games/${gameId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, genre, description }),
+  });
+
+  if (!res.ok) {
+    alert(`Erro ao atualizar jogo: ${await safeText(res)}`);
+    return;
+  }
+
+  await fetchGames();
+  await refreshPriceFormOptions();
+}
+
+// ==========================
+// EDITAR / REMOVER SITE
+// ==========================
+async function deleteSite(siteId) {
+  const ok = confirm("Tem certeza que deseja remover este site?");
+  if (!ok) return;
+
+  const res = await fetch(`${API_URL}/sites/${siteId}`, { method: "DELETE" });
+  if (!res.ok) {
+    alert(`Erro ao remover site: ${await safeText(res)}`);
+    return;
+  }
+
+  await fetchSites();
+  await refreshPriceFormOptions();
+}
+
+async function editSite(siteId) {
+  const resSite = await fetch(`${API_URL}/sites/${siteId}`);
+  if (!resSite.ok) {
+    alert("Não consegui carregar o site para editar.");
+    return;
+  }
+  const site = await resSite.json();
+
+  const name = prompt("Novo nome da plataforma:", site.name);
+  if (name === null) return;
+
+  const url = prompt("Nova URL:", site.url || "");
+  if (url === null) return;
+
+  const activeStr = prompt("Ativo? (sim/não):", site.active ? "sim" : "não");
+  if (activeStr === null) return;
+  const active = activeStr.trim().toLowerCase().startsWith("s");
+
+  const res = await fetch(`${API_URL}/sites/${siteId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, url, active }),
+  });
+
+  if (!res.ok) {
+    alert(`Erro ao atualizar site: ${await safeText(res)}`);
+    return;
+  }
+
+  await fetchSites();
+  await refreshPriceFormOptions();
 }
 
 // ==========================
@@ -347,7 +494,6 @@ async function editPrice(priceId, gameId, siteId, currentPrice, currentCurrency)
     return;
   }
 
-  // Backend só atualiza o campo price (PriceUpdate = { price })
   const res = await fetch(`${API_URL}/prices/${priceId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
