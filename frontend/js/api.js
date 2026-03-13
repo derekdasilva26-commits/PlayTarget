@@ -22,7 +22,7 @@ const priceCurrency = document.getElementById("priceCurrency");
 const priceResult = document.getElementById("priceResult");
 
 // ==========================
-// AUTENTICAÇÃO
+// AUTH
 // ==========================
 function getToken() {
   return localStorage.getItem("token");
@@ -38,42 +38,72 @@ function authHeaders() {
 function updateAuthUI() {
   const token = getToken();
   const username = localStorage.getItem("username");
-  const authForms = document.getElementById("authForms");
-  const authLogged = document.getElementById("authLogged");
+  const loggedIn = document.getElementById("authLoggedIn");
+  const loggedOut = document.getElementById("authLoggedOut");
   const loggedUsername = document.getElementById("loggedUsername");
 
   if (token && username) {
-    if (authForms) authForms.classList.add("hidden");
-    if (authLogged) authLogged.classList.remove("hidden");
+    if (loggedIn) loggedIn.classList.remove("hidden");
+    if (loggedOut) loggedOut.classList.add("hidden");
     if (loggedUsername) loggedUsername.textContent = username;
   } else {
-    if (authForms) authForms.classList.remove("hidden");
-    if (authLogged) authLogged.classList.add("hidden");
+    if (loggedIn) loggedIn.classList.add("hidden");
+    if (loggedOut) loggedOut.classList.remove("hidden");
   }
 }
 
-async function register(username, password) {
+async function register() {
+  const username = document.getElementById("authUsername")?.value?.trim();
+  const password = document.getElementById("authPassword")?.value;
+  const authMsg = document.getElementById("authMsg");
+
+  if (!username || !password) {
+    if (authMsg) authMsg.textContent = "Preencha username e senha.";
+    return;
+  }
+
   const res = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  return res;
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (authMsg) authMsg.textContent = data.detail || "Erro ao registrar.";
+    return;
+  }
+
+  if (authMsg) authMsg.textContent = "Registrado! Faça login.";
 }
 
-async function login(username, password) {
+async function login() {
+  const username = document.getElementById("authUsername")?.value?.trim();
+  const password = document.getElementById("authPassword")?.value;
+  const authMsg = document.getElementById("authMsg");
+
+  if (!username || !password) {
+    if (authMsg) authMsg.textContent = "Preencha username e senha.";
+    return;
+  }
+
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  if (res.ok) {
-    const data = await res.json();
-    localStorage.setItem("token", data.access_token);
-    localStorage.setItem("username", username);
-    updateAuthUI();
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (authMsg) authMsg.textContent = data.detail || "Usuário ou senha inválidos.";
+    return;
   }
-  return res;
+
+  const data = await res.json();
+  localStorage.setItem("token", data.access_token);
+  localStorage.setItem("username", username);
+  if (authMsg) authMsg.textContent = "";
+  updateAuthUI();
 }
 
 function logout() {
@@ -85,53 +115,10 @@ function logout() {
 const registerBtn = document.getElementById("registerBtn");
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
-const authMsg = document.getElementById("authMsg");
 
-if (registerBtn) {
-  registerBtn.addEventListener("click", async () => {
-    const username = document.getElementById("authUsername")?.value?.trim();
-    const password = document.getElementById("authPassword")?.value;
-    if (!username || !password) {
-      if (authMsg) authMsg.textContent = "Preencha username e senha.";
-      return;
-    }
-    const res = await register(username, password);
-    if (res.ok) {
-      if (authMsg) {
-        authMsg.className = "mt-2 text-sm text-green-600";
-        authMsg.textContent = "Registrado com sucesso! Faça login.";
-      }
-    } else {
-      const txt = await safeText(res);
-      if (authMsg) {
-        authMsg.className = "mt-2 text-sm text-red-600";
-        authMsg.textContent = `Erro ao registrar: ${txt}`;
-      }
-    }
-  });
-}
-
-if (loginBtn) {
-  loginBtn.addEventListener("click", async () => {
-    const username = document.getElementById("authUsername")?.value?.trim();
-    const password = document.getElementById("authPassword")?.value;
-    if (!username || !password) {
-      if (authMsg) authMsg.textContent = "Preencha username e senha.";
-      return;
-    }
-    const res = await login(username, password);
-    if (!res.ok) {
-      const txt = await safeText(res);
-      if (authMsg) { authMsg.className = "mt-2 text-sm text-red-600"; authMsg.textContent = `Erro ao logar: ${txt}`; }
-    } else {
-      if (authMsg) authMsg.textContent = "";
-    }
-  });
-}
-
-if (logoutBtn) {
-  logoutBtn.addEventListener("click", () => logout());
-}
+if (registerBtn) registerBtn.addEventListener("click", register);
+if (loginBtn) loginBtn.addEventListener("click", login);
+if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
 // ==========================
 // HELPERS
