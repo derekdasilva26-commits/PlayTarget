@@ -2,20 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.auth.deps import get_current_user
-from backend.database import SessionLocal
+from backend.database import get_db
 from backend.models.game import Game
 from backend.models.user import User
 from backend.schemas.game import GameCreate, GameResponse, GameUpdate
 
 router = APIRouter(prefix="/games", tags=["Games"])
-
-def get_db():
-    """Dependency para obter sessão do banco"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.post("/", response_model=GameResponse)
 def create_game(game: GameCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):

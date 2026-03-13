@@ -2,19 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.auth.deps import get_current_user
-from backend.database import SessionLocal
+from backend.database import get_db
 from backend.models.site import Site
 from backend.models.user import User
 from backend.schemas.site import SiteCreate, SiteResponse, SiteUpdate
 
 router = APIRouter(prefix="/sites", tags=["Sites"])
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.post("/", response_model=SiteResponse)
 def create_site(site: SiteCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
