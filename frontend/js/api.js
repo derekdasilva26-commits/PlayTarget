@@ -37,33 +37,28 @@ function authHeaders() {
 
 function updateAuthUI() {
   const token = getToken();
-  const authForm = document.getElementById("authForm");
-  const authStatus = document.getElementById("authStatus");
-  const loggedUser = document.getElementById("loggedUser");
+  const username = localStorage.getItem("username");
+  const loggedIn = document.getElementById("authLoggedIn");
+  const loggedOut = document.getElementById("authLoggedOut");
+  const loggedUsername = document.getElementById("loggedUsername");
 
-  if (token) {
-    // Decode username from JWT payload (no verification needed client-side)
-    try {
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      if (loggedUser) loggedUser.textContent = `Logado como: ${payload.sub}`;
-    } catch {
-      if (loggedUser) loggedUser.textContent = "Logado";
-    }
-    if (authForm) authForm.classList.add("hidden");
-    if (authStatus) authStatus.classList.remove("hidden");
+  if (token && username) {
+    if (loggedIn) loggedIn.classList.remove("hidden");
+    if (loggedOut) loggedOut.classList.add("hidden");
+    if (loggedUsername) loggedUsername.textContent = username;
   } else {
-    if (authForm) authForm.classList.remove("hidden");
-    if (authStatus) authStatus.classList.add("hidden");
+    if (loggedIn) loggedIn.classList.add("hidden");
+    if (loggedOut) loggedOut.classList.remove("hidden");
   }
 }
 
 async function register() {
   const username = document.getElementById("authUsername")?.value?.trim();
   const password = document.getElementById("authPassword")?.value;
-  const msgEl = document.getElementById("authMessage");
+  const authMsg = document.getElementById("authMsg");
 
   if (!username || !password) {
-    if (msgEl) { msgEl.textContent = "Preencha username e senha."; msgEl.classList.remove("hidden"); }
+    if (authMsg) authMsg.textContent = "Preencha username e senha.";
     return;
   }
 
@@ -75,22 +70,20 @@ async function register() {
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    if (msgEl) { msgEl.textContent = data.detail || "Erro ao registrar."; msgEl.classList.remove("hidden"); }
+    if (authMsg) authMsg.textContent = data.detail || "Erro ao registrar.";
     return;
   }
 
-  if (msgEl) { msgEl.textContent = ""; msgEl.classList.add("hidden"); }
-  // Auto-login after register
-  await login(username, password);
+  if (authMsg) authMsg.textContent = "Registrado! Faça login.";
 }
 
-async function login(usernameArg, passwordArg) {
-  const username = usernameArg ?? document.getElementById("authUsername")?.value?.trim();
-  const password = passwordArg ?? document.getElementById("authPassword")?.value;
-  const msgEl = document.getElementById("authMessage");
+async function login() {
+  const username = document.getElementById("authUsername")?.value?.trim();
+  const password = document.getElementById("authPassword")?.value;
+  const authMsg = document.getElementById("authMsg");
 
   if (!username || !password) {
-    if (msgEl) { msgEl.textContent = "Preencha username e senha."; msgEl.classList.remove("hidden"); }
+    if (authMsg) authMsg.textContent = "Preencha username e senha.";
     return;
   }
 
@@ -102,27 +95,29 @@ async function login(usernameArg, passwordArg) {
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    if (msgEl) { msgEl.textContent = data.detail || "Username ou senha inválidos."; msgEl.classList.remove("hidden"); }
+    if (authMsg) authMsg.textContent = data.detail || "Usuário ou senha inválidos.";
     return;
   }
 
   const data = await res.json();
   localStorage.setItem("token", data.access_token);
-  if (msgEl) { msgEl.textContent = ""; msgEl.classList.add("hidden"); }
+  localStorage.setItem("username", username);
+  if (authMsg) authMsg.textContent = "";
   updateAuthUI();
 }
 
 function logout() {
   localStorage.removeItem("token");
+  localStorage.removeItem("username");
   updateAuthUI();
 }
 
-// Bind auth buttons
 const registerBtn = document.getElementById("registerBtn");
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
+
 if (registerBtn) registerBtn.addEventListener("click", register);
-if (loginBtn) loginBtn.addEventListener("click", () => login());
+if (loginBtn) loginBtn.addEventListener("click", login);
 if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
 // ==========================

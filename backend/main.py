@@ -3,13 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import Base, engine
 from backend.models.game import Game
-from backend.models.price import Price
 from backend.models.site import Site
-from backend.models.user import User  # noqa: F401 – ensures table is created
-from backend.routes.auth import router as auth_router
+from backend.models.price import Price
+from backend.models.user import User
 from backend.routes.games import router as games_router
-from backend.routes.price import router as price_router
 from backend.routes.sites import router as sites_router
+from backend.routes.price import router as price_router
+from backend.routes.auth import router as auth_router
 
 app = FastAPI(
     title="PlayTarget API",
