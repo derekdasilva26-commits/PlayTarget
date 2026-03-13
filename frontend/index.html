@@ -22,6 +22,34 @@
         </p>
       </header>
 
+      <!-- LOGIN / REGISTRO -->
+      <section class="bg-white rounded shadow p-6">
+        <h2 class="text-2xl font-semibold mb-4">Autenticação</h2>
+
+        <!-- Logged in state -->
+        <div id="authLoggedIn" class="hidden flex items-center gap-4">
+          <span class="text-green-700 font-semibold">Logado como: <span id="loggedUsername"></span></span>
+          <button id="logoutBtn" class="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700">Sair</button>
+        </div>
+
+        <!-- Logged out state -->
+        <div id="authLoggedOut" class="flex flex-col gap-3 md:flex-row md:items-end md:gap-4">
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium">Username</label>
+            <input id="authUsername" class="border rounded px-3 py-2" placeholder="username" />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-sm font-medium">Password</label>
+            <input id="authPassword" type="password" class="border rounded px-3 py-2" placeholder="senha" />
+          </div>
+          <div class="flex gap-2">
+            <button id="registerBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Registrar</button>
+            <button id="loginBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Login</button>
+          </div>
+          <span id="authMsg" class="text-sm text-red-600"></span>
+        </div>
+      </section>
+
       <section class="bg-white rounded shadow p-6">
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <h2 class="text-2xl font-semibold">Games</h2>
