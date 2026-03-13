@@ -20,10 +20,10 @@ def get_db():
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    """Registrar um novo usuário"""
+    """Registrar novo usuário"""
     existing = db.query(User).filter(User.username == user.username).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Username já está em uso")
+        raise HTTPException(status_code=400, detail="Username já cadastrado")
 
     new_user = User(
         username=user.username,
@@ -42,8 +42,9 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Username ou senha inválidos",
+            detail="Username ou senha incorretos",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(data={"sub": db_user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    token = create_access_token(data={"sub": db_user.username})
+    return {"access_token": token, "token_type": "bearer"}

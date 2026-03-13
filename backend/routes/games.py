@@ -5,6 +5,7 @@ from backend.database import SessionLocal
 from backend.models.game import Game
 from backend.schemas.game import GameCreate, GameResponse, GameUpdate
 from backend.auth.deps import get_current_user
+from backend.models.user import User
 
 router = APIRouter(prefix="/games", tags=["Games"])
 
@@ -17,7 +18,7 @@ def get_db():
         db.close()
 
 @router.post("/", response_model=GameResponse)
-def create_game(game: GameCreate, db: Session = Depends(get_db), current_user: object = Depends(get_current_user)):
+def create_game(game: GameCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Criar um novo jogo
     
@@ -53,7 +54,7 @@ def get_game(game_id: int, db: Session = Depends(get_db)):
     return game
 
 @router.put("/{game_id}", response_model=GameResponse)
-def update_game(game_id: int, game: GameUpdate, db: Session = Depends(get_db), current_user: object = Depends(get_current_user)):
+def update_game(game_id: int, game: GameUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Atualizar um jogo existente"""
     db_game = db.query(Game).filter(Game.id == game_id).first()
     if not db_game:
@@ -67,7 +68,7 @@ def update_game(game_id: int, game: GameUpdate, db: Session = Depends(get_db), c
     return db_game
 
 @router.delete("/{game_id}")
-def delete_game(game_id: int, db: Session = Depends(get_db), current_user: object = Depends(get_current_user)):
+def delete_game(game_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Deletar um jogo"""
     db_game = db.query(Game).filter(Game.id == game_id).first()
     if not db_game:
