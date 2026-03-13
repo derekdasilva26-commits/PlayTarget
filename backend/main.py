@@ -5,9 +5,11 @@ from backend.database import Base, engine
 from backend.models.game import Game
 from backend.models.site import Site
 from backend.models.price import Price
+from backend.models.user import User
 from backend.routes.games import router as games_router
 from backend.routes.sites import router as sites_router
 from backend.routes.price import router as price_router
+from backend.routes.auth import router as auth_router
 
 app = FastAPI(
     title="PlayTarget API",
@@ -28,6 +30,7 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 
 # ✅ Incluir todas as rotas
+app.include_router(auth_router)
 app.include_router(games_router)
 app.include_router(sites_router)
 app.include_router(price_router)
