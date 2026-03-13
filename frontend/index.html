@@ -22,6 +22,38 @@
         </p>
       </header>
 
+      <!-- ========== LOGIN / REGISTRO ========== -->
+      <section class="bg-white rounded shadow p-6">
+        <h2 class="text-2xl font-semibold mb-4">Autenticação</h2>
+
+        <!-- Estado: não logado -->
+        <div id="authForms">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input id="authUsername" class="border rounded px-3 py-2" placeholder="Username"
+              aria-label="Username" />
+            <input id="authPassword" type="password" class="border rounded px-3 py-2" placeholder="Senha"
+              aria-label="Senha" />
+          </div>
+          <div class="mt-3 flex gap-3 flex-wrap">
+            <button id="registerBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              Registrar
+            </button>
+            <button id="loginBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+              Login
+            </button>
+          </div>
+          <p id="authMsg" class="mt-2 text-sm text-red-600"></p>
+        </div>
+
+        <!-- Estado: logado -->
+        <div id="authLogged" class="hidden flex items-center gap-4">
+          <p class="text-sm">Logado como: <span id="loggedUsername" class="font-bold"></span></p>
+          <button id="logoutBtn" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm">
+            Sair
+          </button>
+        </div>
+      </section>
+
       <section class="bg-white rounded shadow p-6">
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <h2 class="text-2xl font-semibold">Games</h2>

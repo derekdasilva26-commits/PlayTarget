@@ -6,6 +6,8 @@ from backend.models.price import Price
 from backend.models.game import Game
 from backend.models.site import Site
 from backend.schemas.price import PriceCreate, PriceResponse, PriceUpdate
+from backend.auth.deps import get_current_user
+from backend.models.user import User
 
 router = APIRouter(prefix="/prices", tags=["Prices"])
 
@@ -17,7 +19,7 @@ def get_db():
         db.close()
 
 @router.post("/", response_model=PriceResponse)
-def create_price(price: PriceCreate, db: Session = Depends(get_db)):
+def create_price(price: PriceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Criar um novo preço"""
     # Validar se jogo existe
     game = db.query(Game).filter(Game.id == price.game_id).first()
@@ -57,7 +59,7 @@ def get_prices_by_game(game_id: int, db: Session = Depends(get_db)):
     return prices
 
 @router.put("/{price_id}", response_model=PriceResponse)
-def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends(get_db)):
+def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Atualizar o preço"""
     db_price = db.query(Price).filter(Price.id == price_id).first()
     if not db_price:
@@ -69,7 +71,7 @@ def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends
     return db_price
 
 @router.delete("/{price_id}")
-def delete_price(price_id: int, db: Session = Depends(get_db)):
+def delete_price(price_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Deletar um preço"""
     db_price = db.query(Price).filter(Price.id == price_id).first()
     if not db_price:
