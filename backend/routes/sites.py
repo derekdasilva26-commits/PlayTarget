@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from backend.auth.deps import get_current_user
 from backend.database import SessionLocal
 from backend.models.site import Site
+from backend.models.user import User
 from backend.schemas.site import SiteCreate, SiteResponse, SiteUpdate
 
 router = APIRouter(prefix="/sites", tags=["Sites"])
@@ -15,7 +17,7 @@ def get_db():
         db.close()
 
 @router.post("/", response_model=SiteResponse)
-def create_site(site: SiteCreate, db: Session = Depends(get_db)):
+def create_site(site: SiteCreate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Criar um novo site"""
     # Verificar se site já existe
     existing_site = db.query(Site).filter(Site.name == site.name).first()
@@ -42,7 +44,7 @@ def get_site(site_id: int, db: Session = Depends(get_db)):
     return site
 
 @router.put("/{site_id}", response_model=SiteResponse)
-def update_site(site_id: int, site: SiteUpdate, db: Session = Depends(get_db)):
+def update_site(site_id: int, site: SiteUpdate, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Atualizar um site"""
     db_site = db.query(Site).filter(Site.id == site_id).first()
     if not db_site:
@@ -56,7 +58,7 @@ def update_site(site_id: int, site: SiteUpdate, db: Session = Depends(get_db)):
     return db_site
 
 @router.delete("/{site_id}")
-def delete_site(site_id: int, db: Session = Depends(get_db)):
+def delete_site(site_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     """Deletar um site"""
     db_site = db.query(Site).filter(Site.id == site_id).first()
     if not db_site:

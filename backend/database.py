@@ -17,3 +17,12 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
+
+def get_db():
+    """Dependency para obter sessão do banco"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

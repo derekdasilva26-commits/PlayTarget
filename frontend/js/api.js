@@ -22,6 +22,110 @@ const priceCurrency = document.getElementById("priceCurrency");
 const priceResult = document.getElementById("priceResult");
 
 // ==========================
+// AUTH
+// ==========================
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function authHeaders() {
+  const token = getToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+function updateAuthUI() {
+  const token = getToken();
+  const authForm = document.getElementById("authForm");
+  const authStatus = document.getElementById("authStatus");
+  const loggedUser = document.getElementById("loggedUser");
+
+  if (token) {
+    // Decode username from JWT payload (no verification needed client-side)
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      if (loggedUser) loggedUser.textContent = `Logado como: ${payload.sub}`;
+    } catch {
+      if (loggedUser) loggedUser.textContent = "Logado";
+    }
+    if (authForm) authForm.classList.add("hidden");
+    if (authStatus) authStatus.classList.remove("hidden");
+  } else {
+    if (authForm) authForm.classList.remove("hidden");
+    if (authStatus) authStatus.classList.add("hidden");
+  }
+}
+
+async function register() {
+  const username = document.getElementById("authUsername")?.value?.trim();
+  const password = document.getElementById("authPassword")?.value;
+  const msgEl = document.getElementById("authMessage");
+
+  if (!username || !password) {
+    if (msgEl) { msgEl.textContent = "Preencha username e senha."; msgEl.classList.remove("hidden"); }
+    return;
+  }
+
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (msgEl) { msgEl.textContent = data.detail || "Erro ao registrar."; msgEl.classList.remove("hidden"); }
+    return;
+  }
+
+  if (msgEl) { msgEl.textContent = ""; msgEl.classList.add("hidden"); }
+  // Auto-login after register
+  await login(username, password);
+}
+
+async function login(usernameArg, passwordArg) {
+  const username = usernameArg ?? document.getElementById("authUsername")?.value?.trim();
+  const password = passwordArg ?? document.getElementById("authPassword")?.value;
+  const msgEl = document.getElementById("authMessage");
+
+  if (!username || !password) {
+    if (msgEl) { msgEl.textContent = "Preencha username e senha."; msgEl.classList.remove("hidden"); }
+    return;
+  }
+
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (msgEl) { msgEl.textContent = data.detail || "Username ou senha inválidos."; msgEl.classList.remove("hidden"); }
+    return;
+  }
+
+  const data = await res.json();
+  localStorage.setItem("token", data.access_token);
+  if (msgEl) { msgEl.textContent = ""; msgEl.classList.add("hidden"); }
+  updateAuthUI();
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  updateAuthUI();
+}
+
+// Bind auth buttons
+const registerBtn = document.getElementById("registerBtn");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+if (registerBtn) registerBtn.addEventListener("click", register);
+if (loginBtn) loginBtn.addEventListener("click", () => login());
+if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+// ==========================
 // HELPERS
 // ==========================
 function setStatus(ok) {
@@ -136,7 +240,7 @@ if (gameForm) {
 
     const res = await fetch(`${API_URL}/games/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(newGame),
     });
 
@@ -222,7 +326,7 @@ if (siteForm) {
 
     const res = await fetch(`${API_URL}/sites/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -351,7 +455,7 @@ if (priceForm) {
 
     const res = await fetch(`${API_URL}/prices/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -376,7 +480,7 @@ async function deleteGame(gameId) {
   const ok = confirm("Tem certeza que deseja remover este jogo?");
   if (!ok) return;
 
-  const res = await fetch(`${API_URL}/games/${gameId}`, { method: "DELETE" });
+  const res = await fetch(`${API_URL}/games/${gameId}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) {
     alert(`Erro ao remover jogo: ${await safeText(res)}`);
     return;
@@ -405,7 +509,7 @@ async function editGame(gameId) {
 
   const res = await fetch(`${API_URL}/games/${gameId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ title, genre, description }),
   });
 
@@ -425,7 +529,7 @@ async function deleteSite(siteId) {
   const ok = confirm("Tem certeza que deseja remover este site?");
   if (!ok) return;
 
-  const res = await fetch(`${API_URL}/sites/${siteId}`, { method: "DELETE" });
+  const res = await fetch(`${API_URL}/sites/${siteId}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) {
     alert(`Erro ao remover site: ${await safeText(res)}`);
     return;
@@ -455,7 +559,7 @@ async function editSite(siteId) {
 
   const res = await fetch(`${API_URL}/sites/${siteId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ name, url, active }),
   });
 
@@ -475,7 +579,7 @@ async function deletePrice(priceId, gameId) {
   const ok = confirm("Tem certeza que deseja remover este preço?");
   if (!ok) return;
 
-  const res = await fetch(`${API_URL}/prices/${priceId}`, { method: "DELETE" });
+  const res = await fetch(`${API_URL}/prices/${priceId}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) {
     alert("Erro ao remover preço.");
     return;
@@ -496,7 +600,7 @@ async function editPrice(priceId, gameId, siteId, currentPrice, currentCurrency)
 
   const res = await fetch(`${API_URL}/prices/${priceId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ price: newPrice }),
   });
 
@@ -516,6 +620,7 @@ window.editPrice = editPrice;
 // INICIALIZAÇÃO
 // ==========================
 (async function init() {
+  updateAuthUI();
   await checkBackend();
   await fetchGames();
   await fetchSites();
