@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from backend.database import Base, engine
 from backend.models.game import Game
@@ -46,4 +47,10 @@ def root():
 @app.get("/health")
 def health_check():
     """Endpoint para verificar se API está rodando"""
-    return {"status": "healthy"}
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        db_status = "error"
+    return {"status": "healthy", "database": db_status}

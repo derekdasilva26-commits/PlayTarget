@@ -1,8 +1,10 @@
 # PlayTarget API
 
-API para comparação de preços de games (FastAPI + SQLAlchemy + PostgreSQL).
+API para comparação de preços de games (FastAPI + SQLAlchemy + SQLite/PostgreSQL).
 
 ## Rodar localmente (Windows / PowerShell)
+
+> **Sem precisar instalar o PostgreSQL!** Por padrão a aplicação usa SQLite.
 
 ```powershell
 py -m venv venv
@@ -11,12 +13,35 @@ pip install -r requirements.txt
 uvicorn backend.main:app --reload
 ```
 
+Acesse a documentação em http://localhost:8000/docs e o frontend abrindo `frontend/index.html` no navegador.
+
+## Configuração de ambiente
+
+Copie o arquivo de exemplo e ajuste as variáveis se necessário:
+
+```powershell
+copy .env.example .env
+```
+
+```bash
+# Linux / macOS
+cp .env.example .env
+```
+
 ## Variáveis de ambiente
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `DATABASE_URL` | `postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget` | URL do banco de dados |
+| `DB_TYPE` | `sqlite` | Tipo de banco: `sqlite` (dev) ou `postgresql` (produção) |
+| `DATABASE_URL` | `sqlite:///./playtarget.db` | URL do banco de dados |
 | `SECRET_KEY` | `playtarget-secret-key-change-in-production` | Chave para assinar tokens JWT (**alterar em produção**) |
+
+### Usar PostgreSQL (produção)
+
+```env
+DB_TYPE=postgresql
+DATABASE_URL=postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget
+```
 
 ## Endpoints úteis
 
