@@ -23,10 +23,12 @@ playtarget.db
 *.db
 *.duckdb
 
-# Environment variables
-.env
+# Environment variables (keep .env with dev defaults committed)
+.env.local
+.env.production
 
 # Test/coverage
 .pytest_cache/
 .coverage
 htmlcov/
+*.duckdb.wal
