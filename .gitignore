@@ -22,6 +22,7 @@ Thumbs.db
 playtarget.db
 *.db
 *.duckdb
+*.duckdb.wal
 
 # Environment variables
 .env
