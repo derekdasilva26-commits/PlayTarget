@@ -31,3 +31,4 @@ playtarget.db
 .pytest_cache/
 .coverage
 htmlcov/
+*.duckdb.wal
