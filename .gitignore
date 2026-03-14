@@ -18,10 +18,9 @@ env/
 .DS_Store
 Thumbs.db
 
-# Local database files
-playtarget.db
-*.db
+# Local database files (DuckDB and PostgreSQL only — SQLite is not supported)
 *.duckdb
+*.duckdb.wal
 
 # Environment variables
 .env

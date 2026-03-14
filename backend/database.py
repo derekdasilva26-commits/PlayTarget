@@ -3,7 +3,16 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+_SUPPORTED_DB_TYPES = ("duckdb", "postgresql")
+
 DB_TYPE = os.getenv("DB_TYPE", "duckdb")
+
+if DB_TYPE not in _SUPPORTED_DB_TYPES:
+    raise ValueError(
+        f"DB_TYPE='{DB_TYPE}' não é suportado. "
+        f"Use um dos tipos suportados: {_SUPPORTED_DB_TYPES}. "
+        "SQLite não é suportado neste projeto."
+    )
 
 if DB_TYPE == "duckdb":
     DATABASE_URL = os.getenv("DATABASE_URL", "duckdb:///playtarget.duckdb")
