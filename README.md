@@ -1,6 +1,6 @@
 # PlayTarget API
 
-API para comparação de preços de games (FastAPI + SQLAlchemy + PostgreSQL).
+API para comparação de preços de games (FastAPI + SQLAlchemy + DuckDB/PostgreSQL).
 
 ## Rodar localmente (Windows / PowerShell)
 
@@ -11,12 +11,32 @@ pip install -r requirements.txt
 uvicorn backend.main:app --reload
 ```
 
+> **Sem configuração adicional!** Por padrão a API usa **DuckDB** como banco de dados local.
+> O arquivo `playtarget.duckdb` é criado automaticamente na primeira execução.
+
 ## Variáveis de ambiente
+
+Copie `.env.example` para `.env` e ajuste se necessário:
+
+```powershell
+copy .env.example .env
+```
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `DATABASE_URL` | `postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget` | URL do banco de dados |
-| `SECRET_KEY` | `playtarget-secret-key-change-in-production` | Chave para assinar tokens JWT (**alterar em produção**) |
+| `DB_TYPE` | `duckdb` | Tipo de banco: `duckdb` (local) ou `postgresql` |
+| `DATABASE_URL` | `duckdb:///playtarget.duckdb` | URL de conexão com o banco |
+| `SECRET_KEY` | `playtarget-secret-key-change-in-production` | Chave para tokens JWT (**alterar em produção**) |
+
+### Usar PostgreSQL em produção
+
+Defina as variáveis antes de iniciar:
+
+```powershell
+$env:DB_TYPE="postgresql"
+$env:DATABASE_URL="postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget"
+uvicorn backend.main:app --reload
+```
 
 ## Endpoints úteis
 

@@ -1,4 +1,3 @@
-@"
 # Python
 __pycache__/
 *.py[cod]
@@ -19,12 +18,15 @@ env/
 .DS_Store
 Thumbs.db
 
-# SQLite (local)
+# Local database files
 playtarget.db
 *.db
+*.duckdb
+
+# Environment variables
+.env
 
 # Test/coverage
 .pytest_cache/
 .coverage
 htmlcov/
-"@ | Set-Content -Encoding UTF8 .gitignore
