@@ -3,8 +3,6 @@
 import os
 import sys
 
-import uvicorn
-
 
 def main():
     print("🎮 PlayTarget API")
@@ -22,8 +20,14 @@ def main():
                     os.environ.setdefault(key.strip(), value.strip())
         print("✅ .env carregado")
 
-    # Verificar imports
+    # Verificar dependências
     print("\n📦 Verificando módulos...")
+    try:
+        import uvicorn
+    except ImportError:
+        print("❌ uvicorn não encontrado. Execute: pip install -r requirements.txt")
+        sys.exit(1)
+
     try:
         from backend.database import DB_TYPE, check_db_connection  # noqa: F401
         from backend.main import app as _app  # noqa: F401
@@ -31,8 +35,12 @@ def main():
         print(f"✅ Banco: {DB_TYPE}")
         ok = check_db_connection()
         print(f"✅ Conexão: {'OK' if ok else 'FALHA'}")
-    except Exception as exc:
+    except ImportError as exc:
         print(f"❌ Erro ao importar módulos: {exc}")
+        print("   Execute: pip install -r requirements.txt")
+        sys.exit(1)
+    except Exception as exc:
+        print(f"❌ Erro ao inicializar aplicação: {exc}")
         sys.exit(1)
 
     print("\n🚀 Iniciando servidor em http://localhost:8000")
