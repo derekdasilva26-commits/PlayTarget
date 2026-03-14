@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.database import Base, engine
+from backend.database import Base, engine, check_db_connection, DB_TYPE
 from backend.models.game import Game
 from backend.models.site import Site
 from backend.models.price import Price
@@ -45,5 +45,10 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """Endpoint para verificar se API está rodando"""
-    return {"status": "healthy"}
+    """Endpoint para verificar se API e banco de dados estão funcionando"""
+    db_ok = check_db_connection()
+    return {
+        "status": "healthy" if db_ok else "degraded",
+        "database": "connected" if db_ok else "disconnected",
+        "db_type": DB_TYPE,
+    }

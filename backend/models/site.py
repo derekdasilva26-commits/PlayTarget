@@ -1,11 +1,11 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Sequence
 from datetime import datetime
 from backend.database import Base
 
 class Site(Base):
     __tablename__ = "sites"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, Sequence("sites_id_seq"), primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
     url = Column(String(255), nullable=False)
     active = Column(Boolean, default=True)

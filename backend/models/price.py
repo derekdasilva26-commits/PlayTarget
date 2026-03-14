@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String, Sequence
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from backend.database import Base
@@ -6,7 +6,7 @@ from backend.database import Base
 class Price(Base):
     __tablename__ = "prices"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, Sequence("prices_id_seq"), primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False, index=True)
     site_id = Column(Integer, ForeignKey("sites.id"), nullable=False, index=True)
     price = Column(Float, nullable=False)

@@ -1,11 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Sequence
 from datetime import datetime
 from backend.database import Base
 
 class Game(Base):
     __tablename__ = "games"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, Sequence("games_id_seq"), primary_key=True, index=True)
     title = Column(String(255), unique=True, index=True, nullable=False)
     genre = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)

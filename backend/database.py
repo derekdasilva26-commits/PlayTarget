@@ -1,14 +1,19 @@
 import os
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget",
-)
+DB_TYPE = os.getenv("DB_TYPE", "duckdb")
 
-engine = create_engine(DATABASE_URL)
+if DB_TYPE == "duckdb":
+    DATABASE_URL = os.getenv("DATABASE_URL", "duckdb:///playtarget.duckdb")
+    engine = create_engine(DATABASE_URL, connect_args={"read_only": False})
+else:
+    DATABASE_URL = os.getenv(
+        "DATABASE_URL",
+        "postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget",
+    )
+    engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -26,3 +31,13 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def check_db_connection() -> bool:
+    """Verifica se a conexão com o banco está funcionando"""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
