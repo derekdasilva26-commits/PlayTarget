@@ -3,17 +3,12 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DB_TYPE = os.getenv("DB_TYPE", "sqlite")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget",
+)
 
-if DB_TYPE == "postgresql":
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL",
-        "postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget",
-    )
-    engine = create_engine(DATABASE_URL)
-else:
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./playtarget.db")
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
     autocommit=False,

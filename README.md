@@ -1,10 +1,8 @@
 # PlayTarget API
 
-API para comparação de preços de games (FastAPI + SQLAlchemy + SQLite/PostgreSQL).
+API para comparação de preços de games (FastAPI + SQLAlchemy + PostgreSQL).
 
 ## Rodar localmente (Windows / PowerShell)
-
-> **Sem precisar instalar o PostgreSQL!** Por padrão a aplicação usa SQLite.
 
 ```powershell
 py -m venv venv
@@ -32,16 +30,8 @@ cp .env.example .env
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `DB_TYPE` | `sqlite` | Tipo de banco: `sqlite` (dev) ou `postgresql` (produção) |
-| `DATABASE_URL` | `sqlite:///./playtarget.db` | URL do banco de dados |
+| `DATABASE_URL` | `postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget` | URL do banco PostgreSQL |
 | `SECRET_KEY` | `playtarget-secret-key-change-in-production` | Chave para assinar tokens JWT (**alterar em produção**) |
-
-### Usar PostgreSQL (produção)
-
-```env
-DB_TYPE=postgresql
-DATABASE_URL=postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget
-```
 
 ## Endpoints úteis
 
