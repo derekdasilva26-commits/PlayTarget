@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Start server
+        run: |
+          python run_server.py &
+          echo $! > server.pid
+          # Wait for the server to be ready
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Server is ready"
+              exit 0
+            fi
+            echo "Waiting for server... attempt $i"
+            sleep 1
+          done
+          echo "Server failed to start within 15 seconds"
+          exit 1
+
+      - name: Run tests
+        run: python -m pytest test_api.py -v
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill "$(cat server.pid)" || true
+            rm server.pid
+          fi
