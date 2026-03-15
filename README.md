@@ -8,11 +8,29 @@ API para comparação de preços de games (FastAPI + SQLAlchemy + DuckDB/Postgre
 py -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-uvicorn backend.main:app --reload
+python run_server.py
 ```
 
 > **Sem configuração adicional!** Por padrão a API usa **DuckDB** como banco de dados local.
 > O arquivo `playtarget.duckdb` é criado automaticamente na primeira execução.
+
+## Rodar com Docker
+
+```bash
+docker compose up --build
+```
+
+A API ficará disponível em `http://localhost:8000`.
+
+## Deploy em produção — Render.com (grátis)
+
+1. Faça um fork ou push deste repositório para o GitHub.
+2. Acesse [render.com](https://render.com) e crie uma conta gratuita.
+3. Clique em **New → Blueprint** e selecione este repositório.
+   O arquivo `render.yaml` já contém toda a configuração necessária.
+4. Clique em **Apply** — o Render vai fazer o build e publicar a API automaticamente.
+
+A URL pública será exibida no painel do Render (ex.: `https://playtarget-api.onrender.com`).
 
 ## Variáveis de ambiente
 

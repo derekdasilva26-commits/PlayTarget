@@ -1,0 +1,17 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_TYPE=duckdb
+      - DATABASE_URL=duckdb:////app/data/playtarget.duckdb
+      # ⚠️  Change SECRET_KEY to a strong random value before deploying to production
+      - SECRET_KEY=playtarget-secret-key-change-in-production
+    volumes:
+      # Persist the DuckDB database file outside the container
+      - playtarget_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  playtarget_data:

@@ -35,13 +35,15 @@ def main():
         print(f"❌ Erro ao importar módulos: {exc}")
         sys.exit(1)
 
-    print("\n🚀 Iniciando servidor em http://localhost:8000")
-    print("📖 Documentação em  http://localhost:8000/docs\n")
+    port = int(os.environ.get("PORT", 8000))
+
+    print(f"\n🚀 Iniciando servidor em http://0.0.0.0:{port}")
+    print(f"📖 Documentação em  http://localhost:{port}/docs\n")
 
     uvicorn.run(
         "backend.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=False,
         log_level="info",
     )
