@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = window.location.origin;
 
 // ==========================
 // ELEMENTOS (HTML)
@@ -615,6 +615,8 @@ window.editPrice = editPrice;
 // INICIALIZAÇÃO
 // ==========================
 (async function init() {
+  const apiUrlDisplay = document.getElementById("apiUrlDisplay");
+  if (apiUrlDisplay) apiUrlDisplay.textContent = API_URL;
   updateAuthUI();
   await checkBackend();
   await fetchGames();

@@ -1,5 +1,9 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.database import Base, engine, check_db_connection, DB_TYPE
 from backend.models.game import Game
@@ -35,14 +39,6 @@ app.include_router(games_router)
 app.include_router(sites_router)
 app.include_router(price_router)
 
-@app.get("/")
-def root():
-    return {
-        "message": "API PlayTarget rodando com sucesso",
-        "docs": "/docs",
-        "version": "1.0.0"
-    }
-
 @app.get("/health")
 def health_check():
     """Endpoint para verificar se API e banco de dados estão funcionando"""
@@ -52,3 +48,27 @@ def health_check():
         "database": "connected" if db_ok else "disconnected",
         "db_type": DB_TYPE,
     }
+
+# ✅ Servir frontend estático (deve vir após as rotas da API)
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+
+if os.path.isdir(FRONTEND_DIR):
+    _js_dir = os.path.join(FRONTEND_DIR, "js")
+    _css_dir = os.path.join(FRONTEND_DIR, "css")
+
+    if os.path.isdir(_js_dir):
+        app.mount("/js", StaticFiles(directory=_js_dir), name="js")
+    if os.path.isdir(_css_dir):
+        app.mount("/css", StaticFiles(directory=_css_dir), name="css")
+
+    @app.get("/")
+    def serve_frontend():
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+else:
+    @app.get("/")
+    def root():
+        return {
+            "message": "API PlayTarget rodando com sucesso",
+            "docs": "/docs",
+            "version": "1.0.0"
+        }

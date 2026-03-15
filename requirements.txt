@@ -9,5 +9,6 @@ bcrypt<5
 python-multipart
 duckdb
 duckdb-engine
+aiofiles
 requests
 pytest

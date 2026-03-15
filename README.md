@@ -2,6 +2,16 @@
 
 API para comparação de preços de games (FastAPI + SQLAlchemy + DuckDB/PostgreSQL).
 
+## 🌐 Deploy público (Render.com — gratuito)
+
+1. Faça fork deste repositório no GitHub.
+2. Acesse [render.com](https://render.com) e crie uma conta.
+3. Clique em **New → Web Service** e conecte ao seu repositório.
+4. O Render detectará automaticamente o `render.yaml` e configurará o serviço.
+5. Clique em **Deploy** — a URL pública será exibida após o deploy (ex: `https://playtarget-api.onrender.com`).
+
+> O frontend é servido automaticamente pelo backend na rota `/`.
+
 ## Rodar localmente (Windows / PowerShell)
 
 ```powershell
