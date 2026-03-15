@@ -1,6 +1,6 @@
 # PlayTarget API
 
-API para comparação de preços de games (FastAPI + SQLAlchemy + SQLite).
+API para comparação de preços de games (FastAPI + SQLAlchemy + PostgreSQL).
 
 ## Rodar localmente (Windows / PowerShell)
 
@@ -11,6 +11,98 @@ pip install -r requirements.txt
 uvicorn backend.main:app --reload
 ```
 
+Acesse a documentação em http://localhost:8000/docs e o frontend abrindo `frontend/index.html` no navegador.
+
+## Configuração de ambiente
+
+Copie o arquivo de exemplo e ajuste as variáveis se necessário:
+
+```powershell
+copy .env.example .env
+```
+
+```bash
+# Linux / macOS
+cp .env.example .env
+```
+
+## Variáveis de ambiente
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `DATABASE_URL` | `postgresql+psycopg2://playtarget_user:playtarget_pass@localhost:5432/playtarget` | URL do banco PostgreSQL |
+| `SECRET_KEY` | `playtarget-secret-key-change-in-production` | Chave para assinar tokens JWT (**alterar em produção**) |
+
 ## Endpoints úteis
-- Swagger: http://localhost:8000/docs
-- Health: http://localhost:8000/health
+
+- **Swagger:** http://localhost:8000/docs
+- **Health:** http://localhost:8000/health
+
+## Autenticação
+
+As rotas de escrita (POST / PUT / DELETE) exigem um token JWT no header `Authorization: Bearer <token>`.
+
+### Registrar usuário
+
+```http
+POST /auth/register
+Content-Type: application/json
+
+{"username": "meuuser", "password": "minhasenha"}
+```
+
+### Login (obter token)
+
+```http
+POST /auth/login
+Content-Type: application/json
+
+{"username": "meuuser", "password": "minhasenha"}
+```
+
+Resposta:
+```json
+{"access_token": "eyJ...", "token_type": "bearer"}
+```
+
+### Usar token nas requisições protegidas
+
+```http
+POST /games/
+Authorization: Bearer eyJ...
+Content-Type: application/json
+
+{"title": "Elden Ring", "genre": "RPG"}
+```
+
+## Rotas públicas (GET — sem autenticação)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/games/` | Listar jogos |
+| GET | `/games/{id}` | Buscar jogo |
+| GET | `/sites/` | Listar sites |
+| GET | `/sites/{id}` | Buscar site |
+| GET | `/prices/` | Listar preços |
+| GET | `/prices/{id}` | Buscar preço |
+| GET | `/prices/game/{game_id}` | Preços de um jogo |
+
+## Rotas protegidas (requerem token JWT)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/auth/register` | Registrar usuário |
+| POST | `/auth/login` | Login (retorna token) |
+| POST | `/games/` | Criar jogo |
+| PUT | `/games/{id}` | Atualizar jogo |
+| DELETE | `/games/{id}` | Remover jogo |
+| POST | `/sites/` | Criar site |
+| PUT | `/sites/{id}` | Atualizar site |
+| DELETE | `/sites/{id}` | Remover site |
+| POST | `/prices/` | Criar preço |
+| PUT | `/prices/{id}` | Atualizar preço |
+| DELETE | `/prices/{id}` | Remover preço |
+
+## Sites suportados
+
+Steam, Epic Games, Nuuvem, Eneba (e qualquer outro que você cadastrar via `/sites`).

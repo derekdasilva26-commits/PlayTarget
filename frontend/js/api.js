@@ -22,6 +22,105 @@ const priceCurrency = document.getElementById("priceCurrency");
 const priceResult = document.getElementById("priceResult");
 
 // ==========================
+// AUTH
+// ==========================
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function authHeaders() {
+  const token = getToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+function updateAuthUI() {
+  const token = getToken();
+  const username = localStorage.getItem("username");
+  const loggedIn = document.getElementById("authLoggedIn");
+  const loggedOut = document.getElementById("authLoggedOut");
+  const loggedUsername = document.getElementById("loggedUsername");
+
+  if (token && username) {
+    if (loggedIn) loggedIn.classList.remove("hidden");
+    if (loggedOut) loggedOut.classList.add("hidden");
+    if (loggedUsername) loggedUsername.textContent = username;
+  } else {
+    if (loggedIn) loggedIn.classList.add("hidden");
+    if (loggedOut) loggedOut.classList.remove("hidden");
+  }
+}
+
+async function register() {
+  const username = document.getElementById("authUsername")?.value?.trim();
+  const password = document.getElementById("authPassword")?.value;
+  const authMsg = document.getElementById("authMsg");
+
+  if (!username || !password) {
+    if (authMsg) authMsg.textContent = "Preencha username e senha.";
+    return;
+  }
+
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (authMsg) authMsg.textContent = data.detail || "Erro ao registrar.";
+    return;
+  }
+
+  if (authMsg) authMsg.textContent = "Registrado! Faça login.";
+}
+
+async function login() {
+  const username = document.getElementById("authUsername")?.value?.trim();
+  const password = document.getElementById("authPassword")?.value;
+  const authMsg = document.getElementById("authMsg");
+
+  if (!username || !password) {
+    if (authMsg) authMsg.textContent = "Preencha username e senha.";
+    return;
+  }
+
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    if (authMsg) authMsg.textContent = data.detail || "Usuário ou senha inválidos.";
+    return;
+  }
+
+  const data = await res.json();
+  localStorage.setItem("token", data.access_token);
+  localStorage.setItem("username", username);
+  if (authMsg) authMsg.textContent = "";
+  updateAuthUI();
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("username");
+  updateAuthUI();
+}
+
+const registerBtn = document.getElementById("registerBtn");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+
+if (registerBtn) registerBtn.addEventListener("click", register);
+if (loginBtn) loginBtn.addEventListener("click", login);
+if (logoutBtn) logoutBtn.addEventListener("click", logout);
+
+// ==========================
 // HELPERS
 // ==========================
 function setStatus(ok) {
@@ -136,7 +235,7 @@ if (gameForm) {
 
     const res = await fetch(`${API_URL}/games/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(newGame),
     });
 
@@ -222,7 +321,7 @@ if (siteForm) {
 
     const res = await fetch(`${API_URL}/sites/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -351,7 +450,7 @@ if (priceForm) {
 
     const res = await fetch(`${API_URL}/prices/`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -376,7 +475,7 @@ async function deleteGame(gameId) {
   const ok = confirm("Tem certeza que deseja remover este jogo?");
   if (!ok) return;
 
-  const res = await fetch(`${API_URL}/games/${gameId}`, { method: "DELETE" });
+  const res = await fetch(`${API_URL}/games/${gameId}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) {
     alert(`Erro ao remover jogo: ${await safeText(res)}`);
     return;
@@ -405,7 +504,7 @@ async function editGame(gameId) {
 
   const res = await fetch(`${API_URL}/games/${gameId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ title, genre, description }),
   });
 
@@ -425,7 +524,7 @@ async function deleteSite(siteId) {
   const ok = confirm("Tem certeza que deseja remover este site?");
   if (!ok) return;
 
-  const res = await fetch(`${API_URL}/sites/${siteId}`, { method: "DELETE" });
+  const res = await fetch(`${API_URL}/sites/${siteId}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) {
     alert(`Erro ao remover site: ${await safeText(res)}`);
     return;
@@ -455,7 +554,7 @@ async function editSite(siteId) {
 
   const res = await fetch(`${API_URL}/sites/${siteId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ name, url, active }),
   });
 
@@ -475,7 +574,7 @@ async function deletePrice(priceId, gameId) {
   const ok = confirm("Tem certeza que deseja remover este preço?");
   if (!ok) return;
 
-  const res = await fetch(`${API_URL}/prices/${priceId}`, { method: "DELETE" });
+  const res = await fetch(`${API_URL}/prices/${priceId}`, { method: "DELETE", headers: authHeaders() });
   if (!res.ok) {
     alert("Erro ao remover preço.");
     return;
@@ -496,7 +595,7 @@ async function editPrice(priceId, gameId, siteId, currentPrice, currentCurrency)
 
   const res = await fetch(`${API_URL}/prices/${priceId}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders(),
     body: JSON.stringify({ price: newPrice }),
   });
 
@@ -516,6 +615,7 @@ window.editPrice = editPrice;
 // INICIALIZAÇÃO
 // ==========================
 (async function init() {
+  updateAuthUI();
   await checkBackend();
   await fetchGames();
   await fetchSites();
