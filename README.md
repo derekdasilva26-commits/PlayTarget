@@ -1,6 +1,6 @@
 # PlayTarget API
 
-API para comparação de preços de games (FastAPI + SQLAlchemy + SQLite).
+API para comparação de preços de games (FastAPI + SQLAlchemy + SQLPostgree).
 
 ## Rodar localmente (Windows / PowerShell)
 
