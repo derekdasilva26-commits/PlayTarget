@@ -1,13 +1,16 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PlayTarget</title>
+<!DOCTYPE html>
+Status backend: <span id="api-status">checando...</span>
 
-    <script src="https://cdn.tailwindcss.com">
-    </script>
-  </head>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>PlayTarget - Comparação de Preços</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        #comparacao-precos { background: #f8f8f8; padding: 1em; border-radius: 6px; }
+        #menor-preco { font-weight: bold; color: green; }
+    </style>
+</head>
 
   <body class="bg-gray-100 text-gray-900">
     <main class="max-w-5xl mx-auto p-6 space-y-8">
@@ -29,7 +32,13 @@
                  
                 Atualizar Lista
           </button>
-        </div>
+         <h1>Comparação Automática de Preços de Games</h1>
+    
+    <div id="comparacao-precos" style="margin: 2em 0;">
+        <strong>Menor preço: <span id="menor-preco"></span></strong><br>
+        Maior preço: <span id="maior-preco"></span><br>
+        Diferença: <span id="diferenca"></span><br>
+        Economia potencial: <span id="economia"></span>
         <form id="gameForm" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
           <input id="title" class="border rounded px-3 py-2" placeholder="Título" required />
 
@@ -40,6 +49,7 @@
             <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
               Cadastrar jogo
             </button>
+            
           </div>
         </form>
         <div id="gamesList" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
@@ -106,7 +116,33 @@
       </section>
       </main>
 
-      <script src="./js/api.js" defer></script>
+      <script>
+    
+    const gameId = 1;
+
+    function buscarComparacao(gameId) {
+        fetch(`http://localhost:8000/prices/game/${gameId}/comparison`)
+            .then(response => {
+                if (!response.ok) { throw new Error('Sem dados'); }
+                return response.json();
+            })
+            .then(dados => {
+                document.getElementById('menor-preco').innerText = `R$ ${dados.menor_preco.toFixed(2)} (${dados.site_melhor_preco})`;
+                document.getElementById('menor-preco').style.color = 'green';
+
+                document.getElementById('maior-preco').innerText = `R$ ${dados.maior_preco.toFixed(2)}`;
+                document.getElementById('diferenca').innerText = `R$ ${dados.diferenca.toFixed(2)}`;
+                document.getElementById('economia').innerText = `R$ ${dados.economia.toFixed(2)}`;
+            })
+            .catch(error => {
+                document.getElementById('comparacao-precos').innerHTML = '<em>Nenhuma comparação disponível para este jogo.</em>';
+            });
+    }
+
+    window.onload = function() {
+        buscarComparacao(gameId);
+    };
+    </script>
       </body>
       </html>
 
