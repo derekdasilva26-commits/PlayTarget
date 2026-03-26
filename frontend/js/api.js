@@ -1,8 +1,12 @@
-const API_URL = "http://127.0.0.1:8000";
-
-// ==========================
-// ELEMENTOS (HTML)
-// ==========================
+fetch('http://127.0.0.1:8000/health')
+  .then(res => res.json())
+  .then(data => {
+     document.getElementById('api-status').textContent = data.status === 'healthy' ? 'ONLINE' : 'OFFLINE';
+  })
+  .catch(() => {
+     document.getElementById('api-status').textContent = 'OFFLINE';
+  });
+  
 const statusEl = document.getElementById("status");
 
 const gamesList = document.getElementById("gamesList");
