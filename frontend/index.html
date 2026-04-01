@@ -21,17 +21,19 @@
             background: #ededed; 
             padding: 1em; 
             border-radius: 8px; 
-            margin-bottom: 28px;
+            margin-bottom: 18px;
         }
         #menor-preco { 
-            font-weight: bold; color: #059669;
+            font-weight: bold; 
+            color: #059669;
         }
         h1 { font-size: 2.2em; margin-bottom: 0.2em; letter-spacing: -2px;}
-        h2 { color: #343a40; font-size: 1.3em; margin-bottom: 20px; margin-top: 24px;}
-        label { font-size: 1em; color: #222; display: block; margin-bottom: 4px;}
-        input, button {
+        h2 { color: #343a40; font-size: 1.3em; margin-bottom: 16px; margin-top: 24px;}
+        h3 { margin-top: 14px; font-size: 0.95rem; font-weight: bold; }
+        label { font-size: 0.95em; color: #222; display: block; margin-bottom: 4px;}
+        input, button, select {
             padding: 8px 12px;
-            font-size: 1em;
+            font-size: 0.95em;
             border: 1px solid #bbb;
             border-radius: 5px;
             outline: none;
@@ -51,7 +53,15 @@
             color: #374151;
         }
         #api-status { font-weight: bold; margin-left: 8px; }
-        form { background: #f9fafb; border-radius:6px; padding:18px 12px; margin-bottom: 18px; display: flex; gap: 14px; align-items: center;}
+        form { 
+            background: #f9fafb; 
+            border-radius:6px; 
+            padding:18px 12px; 
+            margin-bottom: 18px; 
+            display: flex; 
+            gap: 14px; 
+            align-items: center;
+        }
         form button { margin-top: 0;}
         @media (max-width: 600px) {
             #content-container { padding: 14px 4px; }
@@ -70,17 +80,45 @@
     <h1>PlayTarget</h1>
     <h2>Comparação Automática de Preços de Games</h2>
 
-    <form id="siteForm" autocomplete="off" style="margin-bottom: 15px;">
-    <label for="siteName">Nome do Site</label>
-    <input id="siteName" placeholder="ex: Steam" required />
-    <label for="siteUrl">URL do Site</label>
-    <input id="siteUrl" placeholder="https://..." required />
-    <button type="submit" style="background-color:#10b981;">Cadastrar Site</button>
-</form>
+    <p style="margin-bottom: 12px; color:#374151; font-size:0.95rem;">
+        Esta tela implementa a <strong>comparação automática de preços</strong> (AC2):
+        ao cadastrar preços do mesmo jogo em sites diferentes, o sistema calcula
+        automaticamente o <strong>menor preço</strong>, o <strong>maior preço</strong>,
+        a <strong>diferença</strong> e a <strong>economia potencial</strong>,
+        indicando claramente em qual site o jogo está mais barato.
+    </p>
 
-<div id="sitesList" style="margin-bottom:12px;"></div>
+    <!-- FORMULÁRIO DE SITE -->
+    <form id="siteForm" autocomplete="off">
+        <div style="flex: 1 1 160px;">
+            <label for="siteName">Nome do Site</label>
+            <input id="siteName" placeholder="ex: Steam" required />
+        </div>
+        <div style="flex: 2 1 220px;">
+            <label for="siteUrl">URL do Site</label>
+            <input id="siteUrl" placeholder="https://..." required />
+        </div>
+        <div style="flex: 0 0 auto;">
+            <label for="siteActive">Ativo?</label>
+            <input id="siteActive" type="checkbox" checked />
+        </div>
+        <button type="submit" style="background-color:#10b981;">Cadastrar Site</button>
+    </form>
 
-   
+    <div style="margin-top: 4px; margin-bottom: 4px;">
+        <button id="refreshSitesBtn" style="background:#2563eb;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;">Atualizar Sites</button>
+    </div>
+
+    <h3>Sites cadastrados</h3>
+    <div id="sitesList" style="margin-top:8px; margin-bottom:16px;"></div>
+
+    <!-- SELEÇÃO DE JOGO PARA COMPARAÇÃO -->
+    <div style="margin-bottom: 16px;">
+        <label for="selectGame" style="font-weight: bold;">Selecionar jogo para comparar preços:</label>
+        <select id="selectGame" style="margin-top: 6px; padding: 6px 12px; border-radius:5px; border:1px solid #bbb; width:100%;"></select>
+    </div>
+
+    <!-- BLOCO DE COMPARAÇÃO -->
     <div id="comparacao-precos">
         <strong>Menor preço: <span id="menor-preco"></span></strong><br>
         Maior preço: <span id="maior-preco"></span><br>
@@ -88,12 +126,13 @@
         Economia potencial: <span id="economia"></span>
     </div>
 
-    <!-- Botão de atualizar listas-->
-    <button onclick="listarSites()" style="background-color:#2563eb;margin-bottom:8px;">Atualizar Sites</button>
-<button onclick="listarJogos()" style="background-color:#2563eb;margin-bottom:8px;">Atualizar Jogos</button>
+    <div id="priceResult" style="margin-top:4px; font-size:0.9rem; color:#111;"></div>
 
-    
     <!-- FORMULÁRIO DE JOGO -->
+    <div style="margin-top: 12px; margin-bottom: 4px;">
+        <button id="refreshGamesBtn" style="background:#2563eb;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;">Atualizar Jogos</button>
+    </div>
+
     <form id="gameForm" autocomplete="off">
         <div style="flex: 1 1 180px; min-width: 120px;">
             <label for="title">Título</label>
@@ -110,111 +149,35 @@
         <button type="submit">Cadastrar Jogo</button>
     </form>
 
-    <div id="gamesList" style="margin-bottom:12px;"></div>
-
-    <!-- Cores de botões-->
-    <button type="submit" style="background-color:#2563eb;">Cadastrar Preço</button>
+    <h3>Jogos cadastrados</h3>
+    <div id="gamesList" style="margin-top:8px; margin-bottom:16px;"></div>
 
     <!-- FORMULÁRIO DE PREÇO -->
+    <h3>Cadastro de Preço</h3>
     <form id="priceForm" autocomplete="off">
-        <div style="flex: 1 1 110px;">
-            <label for="gameId">ID do Jogo</label>
-            <input id="gameId" placeholder="ID do Jogo" required />
+        <div style="flex: 1 1 140px;">
+            <label for="priceGameId">Jogo</label>
+            <select id="priceGameId"></select>
         </div>
-        <div style="flex: 1 1 110px;">
-            <label for="siteId">ID do Site</label>
-            <input id="siteId" placeholder="ID do Site" required />
+        <div style="flex: 1 1 140px;">
+            <label for="priceSiteId">Site</label>
+            <select id="priceSiteId"></select>
         </div>
         <div style="flex: 1 1 110px;">
             <label for="priceValue">Preço</label>
             <input id="priceValue" placeholder="Preço" type="number" step="0.01" required />
         </div>
-        <button type="submit">Cadastrar Preço</button>
+        <div style="flex: 0 0 90px;">
+            <label for="priceCurrency">Moeda</label>
+            <input id="priceCurrency" value="BRL" />
+        </div>
+        <button type="submit" style="background-color:#2563eb;">Cadastrar Preço</button>
     </form>
 
-    <!-- SCRIPTS -->
-    <script>
-    // ================ STATUS DO BACKEND ================
-    fetch('http://localhost:8000/health')
-      .then(res => res.json())
-      .then(data => {
-         document.getElementById('api-status').textContent = data.status === 'healthy' ? 'ONLINE' : 'OFFLINE';
-      })
-      .catch(() => {
-         document.getElementById('api-status').textContent = 'OFFLINE';
-      });
+    <button id="refreshPriceFormBtn" style="background:#2563eb;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;">Atualizar opções de jogo/site</button>
 
-    // ================ BUSCA DE COMPARAÇÃO ================
-    let gameId = 1; // ALTERE conforme sua lógica/listagem
-
-    function buscarComparacao(gameIdValue) {
-        fetch(`http://localhost:8000/prices/game/${gameIdValue}/comparison`)
-            .then(response => {
-                if (!response.ok) { throw new Error('Sem dados'); }
-                return response.json();
-            })
-            .then(dados => {
-                document.getElementById('menor-preco').innerText = `R$ ${dados.menor_preco.toFixed(2)} (${dados.site_melhor_preco})`;
-                document.getElementById('menor-preco').style.color = '#059669';
-
-                document.getElementById('maior-preco').innerText = `R$ ${dados.maior_preco.toFixed(2)}`;
-                document.getElementById('diferenca').innerText = `R$ ${dados.diferenca.toFixed(2)}`;
-                document.getElementById('economia').innerText = `R$ ${dados.economia.toFixed(2)}`;
-            })
-            .catch(() => {
-                document.getElementById('comparacao-precos').innerHTML = '<em>Nenhuma comparação disponível para este jogo.</em>';
-            });
-    }
-
-    // Faz a busca ao carregar a página
-    window.onload = function() {
-        buscarComparacao(gameId);
-    };
-
-    // =============== CADASTRO DE JOGO ======================
-    document.getElementById('gameForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const title = document.getElementById('title').value;
-        const genre = document.getElementById('genre').value;
-        const description = document.getElementById('description').value;
-        fetch('http://localhost:8000/games/', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ title, genre, description })
-        })
-        .then(res => {
-            if (res.ok) {
-                alert('Jogo cadastrado! Veja o ID no /games ou atualize sua listagem.');
-                // Ideal: atualize lista de jogos ou pegue ID recém-cadastrado
-            } else {
-                return res.json().then(data => { throw new Error(data.detail || 'Erro ao cadastrar jogo'); });
-            }
-        })
-        .catch(err => alert(err.message));
-    });
-
-    // =============== CADASTRO DE PREÇO ======================
-    document.getElementById('priceForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const gameIdValue = document.getElementById('gameId').value;
-        const siteId = document.getElementById('siteId').value;
-        const price = parseFloat(document.getElementById('priceValue').value);
-        fetch('http://localhost:8000/prices/', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ game_id: parseInt(gameIdValue), site_id: parseInt(siteId), price: price, currency: 'BRL' })
-        })
-        .then(res => {
-            if (res.ok) {
-                alert('Preço cadastrado!');
-                buscarComparacao(gameIdValue);
-            } else {
-                return res.json().then(data => { throw new Error(data.detail || 'Erro ao cadastrar preço'); });
-            }
-        })
-        .catch(err => alert(err.message));
-    });
-    </script>
+    <!-- Usa TODO o JS centralizado em frontend/js/api.js -->
+    <script src="./js/api.js"></script>
 </div>
 </body>
 </html>
