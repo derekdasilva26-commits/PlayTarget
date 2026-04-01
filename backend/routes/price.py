@@ -79,15 +79,11 @@ def delete_price(price_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Preço deletado com sucesso"}
 
-# --------------------------
-# NOVO ENDPOINT AC2: COMPARAÇÃO AUTOMÁTICA DE PREÇOS
-# --------------------------
-
-@router.get("/game/{game_id}/comparison")
+@router.get("/game/{game-id}/comparison")
 def compare_prices(game_id: int, db: Session = Depends(get_db)):
     """
     Comparação automática de preços para um game específico.
-    Retorna menor preço, maior preço, diferença, site do melhor preço e economia potencial.
+    Retorna menor preço, maior preço, diferença, site de melhor preço e economia potencial. 
     """
     prices = db.query(Price).filter(Price.game_id == game_id).all()
     if not prices:
@@ -99,7 +95,9 @@ def compare_prices(game_id: int, db: Session = Depends(get_db)):
     return {
         "menor_preco": min_price.price,
         "maior_preco": max_price.price,
-        "diferenca": economy,
+        "diferença": economy,
         "site_melhor_preco": site.name if site else "Desconhecido",
         "economia": economy
     }
+
+                        
