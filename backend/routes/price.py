@@ -7,7 +7,13 @@ from backend.models.game import Game
 from backend.models.site import Site
 from backend.schemas.price import PriceCreate, PriceResponse, PriceUpdate
 
-router = APIRouter(prefix="/prices", tags=["Prices"])
+router = APIRouter(
+    prefix="/prices",
+    tags=["prices"],
+)
+
+
+# app.include_router(price_router)
 
 def get_db():
     db = SessionLocal()
@@ -16,29 +22,30 @@ def get_db():
     finally:
         db.close()
 
+
 @router.post("/", response_model=PriceResponse)
 def create_price(price: PriceCreate, db: Session = Depends(get_db)):
     """Criar um novo preço"""
-    # Validar se jogo existe
     game = db.query(Game).filter(Game.id == price.game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Jogo não encontrado")
-    
-    # Validar se site existe
+
     site = db.query(Site).filter(Site.id == price.site_id).first()
     if not site:
         raise HTTPException(status_code=404, detail="Site não encontrado")
-    
+
     new_price = Price(**price.dict())
     db.add(new_price)
     db.commit()
     db.refresh(new_price)
     return new_price
 
+
 @router.get("/", response_model=list[PriceResponse])
 def list_prices(db: Session = Depends(get_db)):
     """Listar todos os preços"""
     return db.query(Price).all()
+
 
 @router.get("/{price_id}", response_model=PriceResponse)
 def get_price(price_id: int, db: Session = Depends(get_db)):
@@ -48,13 +55,18 @@ def get_price(price_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Preço não encontrado")
     return price
 
+
 @router.get("/game/{game_id}", response_model=list[PriceResponse])
 def get_prices_by_game(game_id: int, db: Session = Depends(get_db)):
     """Buscar todos os preços de um jogo"""
     prices = db.query(Price).filter(Price.game_id == game_id).all()
     if not prices:
-        raise HTTPException(status_code=404, detail="Nenhum preço encontrado para este jogo")
+        raise HTTPException(
+            status_code=404,
+            detail="Nenhum preço encontrado para este jogo",
+        )
     return prices
+
 
 @router.put("/{price_id}", response_model=PriceResponse)
 def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends(get_db)):
@@ -62,11 +74,12 @@ def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends
     db_price = db.query(Price).filter(Price.id == price_id).first()
     if not db_price:
         raise HTTPException(status_code=404, detail="Preço não encontrado")
-    
+
     db_price.price = price_update.price
     db.commit()
     db.refresh(db_price)
     return db_price
+
 
 @router.delete("/{price_id}")
 def delete_price(price_id: int, db: Session = Depends(get_db)):
@@ -74,30 +87,42 @@ def delete_price(price_id: int, db: Session = Depends(get_db)):
     db_price = db.query(Price).filter(Price.id == price_id).first()
     if not db_price:
         raise HTTPException(status_code=404, detail="Preço não encontrado")
-    
+
     db.delete(db_price)
     db.commit()
     return {"message": "Preço deletado com sucesso"}
 
-@router.get("/game/{game-id}/comparison")
+
+@router.get("/game/{game_id}/comparison")
 def compare_prices(game_id: int, db: Session = Depends(get_db)):
     """
     Comparação automática de preços para um game específico.
-    Retorna menor preço, maior preço, diferença, site de melhor preço e economia potencial. 
+    Retorna menor preço, maior preço, diferença, site de melhor preço e economia potencial.
     """
     prices = db.query(Price).filter(Price.game_id == game_id).all()
-    if not prices:
-        raise HTTPException(status_code=404, detail="Nenhum preço encontrado para este jogo")
+
+    # precisa de pelo menos 2 preços para fazer comparação
+    if len(prices) < 2:
+        raise HTTPException(
+            status_code=404,
+            detail="Not enough prices to compare",
+        )
+
+    # menor e maior preço
     min_price = min(prices, key=lambda x: x.price)
     max_price = max(prices, key=lambda x: x.price)
-    economy = max_price.price - min_price.price
-    site = db.query(Site).filter(Site.id == min_price.site_id).first()
-    return {
-        "menor_preco": min_price.price,
-        "maior_preco": max_price.price,
-        "diferença": economy,
-        "site_melhor_preco": site.name if site else "Desconhecido",
-        "economia": economy
-    }
 
-                        
+    menor_valor = float(min_price.price)
+    maior_valor = float(max_price.price)
+    economy = maior_valor - menor_valor
+
+    # buscar nome do site com menor preço
+    site = db.query(Site).filter(Site.id == min_price.site_id).first()
+
+    return {
+        "menor_preco": menor_valor,
+        "maior_preco": maior_valor,
+        "diferenca": economy,
+        "economia": economy,
+        "site_melhor_preco": site.name if site else "Desconhecido",
+    }
