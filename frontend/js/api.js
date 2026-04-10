@@ -1,7 +1,10 @@
-fetch('http://127.0.0.1:8000/health')
+const API_URL = "http://127.0.0.1:8000";
+
+fetch(`${API_URL}/health`)
   .then(res => res.json())
   .then(data => {
-     document.getElementById('api-status').textContent = data.status === 'healthy' ? 'ONLINE' : 'OFFLINE';
+     document.getElementById('api-status').textContent =
+       data.status === 'healthy' ? 'ONLINE' : 'OFFLINE';
   })
   .catch(() => {
      document.getElementById('api-status').textContent = 'OFFLINE';
@@ -25,13 +28,18 @@ const priceValue = document.getElementById("priceValue");
 const priceCurrency = document.getElementById("priceCurrency");
 const priceResult = document.getElementById("priceResult");
 
+// NOVO: select para comparação automática
+const selectGame = document.getElementById("selectGame");
+
 // ==========================
 // HELPERS
 // ==========================
 function setStatus(ok) {
   if (!statusEl) return;
   statusEl.textContent = ok ? "ONLINE" : "OFFLINE";
-  statusEl.className = ok ? "font-bold text-green-700" : "font-bold text-red-700";
+  statusEl.className = ok
+    ? "font-bold text-green-700"
+    : "font-bold text-red-700";
 }
 
 async function checkBackend() {
@@ -128,6 +136,36 @@ async function fetchGames() {
   });
 }
 
+// NOVO: preencher combo de jogos para comparação automática
+async function preencherComboJogos() {
+  if (!selectGame) return;
+
+  const res = await fetch(`${API_URL}/games/`);
+  if (!res.ok) return;
+  const games = await res.json();
+
+  selectGame.innerHTML = "";
+
+  games.forEach((game) => {
+    const opt = document.createElement("option");
+    opt.value = game.id;
+    opt.textContent = `[${game.id}] ${game.title}`;
+    selectGame.appendChild(opt);
+  });
+
+  if (games.length > 0) {
+    // mostra comparação do primeiro jogo ao carregar
+    buscarComparacao(games[0].id);
+  }
+}
+
+if (selectGame) {
+  selectGame.addEventListener("change", () => {
+    const id = selectGame.value;
+    if (id) buscarComparacao(id);
+  });
+}
+
 if (gameForm) {
   gameForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -152,6 +190,7 @@ if (gameForm) {
     gameForm.reset();
     await fetchGames();
     await refreshPriceFormOptions();
+    await preencherComboJogos();
   });
 }
 
@@ -287,7 +326,9 @@ async function loadPrices(gameId) {
 
           <div class="flex items-center gap-2">
             <button class="text-xs bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
-              onclick="editPrice(${p.id}, ${p.game_id}, ${p.site_id}, ${p.price}, '${p.currency || "BRL"}')">
+              onclick="editPrice(${p.id}, ${p.game_id}, ${p.site_id}, ${p.price}, '${
+        p.currency || "BRL"
+      }')">
               Editar
             </button>
             <button class="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
@@ -370,9 +411,56 @@ if (priceForm) {
     if (priceCurrency) priceCurrency.value = "BRL";
 
     await loadPrices(payload.game_id);
+    // também atualiza comparação do jogo selecionado se o combo usar esse id
+    if (selectGame && String(payload.game_id) === selectGame.value) {
+      buscarComparacao(payload.game_id);
+    }
   });
 }
 
+// ==========================
+// COMPARAÇÃO AUTOMÁTICA DE PREÇOS (AC2)
+// ==========================
+function buscarComparacao(gameId) {
+  fetch(`${API_URL}/prices/game/${gameId}/comparison`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Sem dados");
+      }
+      return response.json();
+    })
+    .then((dados) => {
+      const infoDiv = document.getElementById("priceResult");
+
+      document.getElementById("menor-preco").innerHTML =
+        `R$ ${dados.menor_preco.toFixed(2)} (${dados.site_melhor_preco})`;
+      document.getElementById("maior-preco").textContent =
+        `R$ ${dados.maior_preco.toFixed(2)}`;
+      document.getElementById("diferenca").textContent =
+        `R$ ${dados.diferenca.toFixed(2)}`;
+      document.getElementById("economia").textContent =
+        `R$ ${dados.economia.toFixed(2)}`;
+
+      // NOVA MENSAGEM BEM EXPLICITA
+      if (infoDiv) {
+        infoDiv.innerHTML =
+          `<strong>Economia potencial:</strong> ` +
+          `você pode economizar <strong>R$ ${dados.economia.toFixed(
+            2
+          )}</strong> ` +
+          `se comprar no site <strong>${dados.site_melhor_preco}</strong> em vez do mais caro.`;
+      }
+    })
+    .catch(() => {
+      document.getElementById(
+        "comparacao-precos"
+      ).innerHTML = "<em>Nenhuma comparação disponível para este jogo.</em>";
+      if (priceResult) {
+        priceResult.textContent =
+          "Cadastre preços em pelo menos dois sites para ver a economia e o site mais barato.";
+      }
+    });
+}
 // ==========================
 // EDITAR / REMOVER JOGO
 // ==========================
@@ -388,6 +476,7 @@ async function deleteGame(gameId) {
 
   await fetchGames();
   await refreshPriceFormOptions();
+  await preencherComboJogos();
 }
 
 async function editGame(gameId) {
@@ -420,6 +509,7 @@ async function editGame(gameId) {
 
   await fetchGames();
   await refreshPriceFormOptions();
+  await preencherComboJogos();
 }
 
 // ==========================
@@ -486,6 +576,9 @@ async function deletePrice(priceId, gameId) {
   }
 
   await loadPrices(gameId);
+  if (selectGame && String(gameId) === selectGame.value) {
+    buscarComparacao(gameId);
+  }
 }
 
 async function editPrice(priceId, gameId, siteId, currentPrice, currentCurrency) {
@@ -510,6 +603,9 @@ async function editPrice(priceId, gameId, siteId, currentPrice, currentCurrency)
   }
 
   await loadPrices(gameId);
+  if (selectGame && String(gameId) === selectGame.value) {
+    buscarComparacao(gameId);
+  }
 }
 
 // expor no window para o onclick funcionar em todos os browsers
@@ -524,4 +620,5 @@ window.editPrice = editPrice;
   await fetchGames();
   await fetchSites();
   await refreshPriceFormOptions();
+  await preencherComboJogos();
 })();
