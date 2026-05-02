@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from backend.database import Base, engine
 from backend.models.game import Game
@@ -8,6 +9,7 @@ from backend.models.price import Price
 from backend.routes.games import router as games_router
 from backend.routes.sites import router as sites_router
 from backend.routes.price import router as price_router
+from backend.services.price_updater import update_all_games
 
 app = FastAPI(
     title="PlayTarget API",
@@ -24,13 +26,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Criar tabelas no banco
+# ✅ Criar tabelas no banco (inclui nova coluna `source`)
 Base.metadata.create_all(bind=engine)
 
 # ✅ Incluir todas as rotas
 app.include_router(games_router)
 app.include_router(sites_router)
 app.include_router(price_router)
+
+# ✅ Agendador: atualiza preços automaticamente a cada 1 hora
+scheduler = BackgroundScheduler()
+scheduler.add_job(update_all_games, "interval", hours=1, id="atualizar_precos")
+
+
+@app.on_event("startup")
+def start_scheduler():
+    scheduler.start()
+
+
+@app.on_event("shutdown")
+def stop_scheduler():
+    scheduler.shutdown()
+
 
 @app.get("/")
 def root():
@@ -39,6 +56,7 @@ def root():
         "docs": "/docs",
         "version": "1.0.0"
     }
+
 
 @app.get("/health")
 def health_check():

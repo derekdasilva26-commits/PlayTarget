@@ -7,6 +7,7 @@ class PriceBase(BaseModel):
     site_id: int
     price: float
     currency: str = "BRL"
+    source: str = "manual"
 
 class PriceCreate(PriceBase):
     """Schema para criar um novo preço"""
@@ -19,6 +20,7 @@ class PriceUpdate(BaseModel):
 class PriceResponse(PriceBase):
     """Schema para retornar um preço (COM id e timestamps)"""
     id: int
+    source: str
     checked_at: datetime
     created_at: datetime
 
@@ -31,6 +33,7 @@ class PriceResponse(PriceBase):
                 "site_id": 1,
                 "price": 199.90,
                 "currency": "BRL",
+                "source": "manual",
                 "checked_at": "2026-02-25T10:00:00",
                 "created_at": "2026-02-25T10:00:00"
             }

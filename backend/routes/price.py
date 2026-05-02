@@ -1,19 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from datetime import datetime
 
 from backend.database import SessionLocal
 from backend.models.price import Price
 from backend.models.game import Game
 from backend.models.site import Site
 from backend.schemas.price import PriceCreate, PriceResponse, PriceUpdate
+from backend.services.price_updater import update_game_prices, update_all_games
 
 router = APIRouter(
     prefix="/prices",
     tags=["prices"],
 )
 
-
-# app.include_router(price_router)
 
 def get_db():
     db = SessionLocal()
@@ -25,7 +26,7 @@ def get_db():
 
 @router.post("/", response_model=PriceResponse)
 def create_price(price: PriceCreate, db: Session = Depends(get_db)):
-    """Criar um novo preço"""
+    """Criar um novo preço manualmente"""
     game = db.query(Game).filter(Game.id == price.game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Jogo não encontrado")
@@ -70,12 +71,13 @@ def get_prices_by_game(game_id: int, db: Session = Depends(get_db)):
 
 @router.put("/{price_id}", response_model=PriceResponse)
 def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends(get_db)):
-    """Atualizar o preço"""
+    """Atualizar o preço manualmente"""
     db_price = db.query(Price).filter(Price.id == price_id).first()
     if not db_price:
         raise HTTPException(status_code=404, detail="Preço não encontrado")
 
     db_price.price = price_update.price
+    db_price.checked_at = datetime.utcnow()
     db.commit()
     db.refresh(db_price)
     return db_price
@@ -97,18 +99,33 @@ def delete_price(price_id: int, db: Session = Depends(get_db)):
 def compare_prices(game_id: int, db: Session = Depends(get_db)):
     """
     Comparação automática de preços para um game específico.
-    Retorna menor preço, maior preço, diferença, site de melhor preço e economia potencial.
+    Usa apenas o preço MAIS RECENTE de cada site para comparar corretamente.
     """
-    prices = db.query(Price).filter(Price.game_id == game_id).all()
+    # Subquery: pega o checked_at mais recente por site para este jogo
+    subq = (
+        db.query(Price.site_id, func.max(Price.checked_at).label("latest"))
+        .filter(Price.game_id == game_id)
+        .group_by(Price.site_id)
+        .subquery()
+    )
 
-    # precisa de pelo menos 2 preços para fazer comparação
+    # Busca apenas os preços mais recentes por site
+    prices = (
+        db.query(Price)
+        .join(
+            subq,
+            (Price.site_id == subq.c.site_id) & (Price.checked_at == subq.c.latest),
+        )
+        .filter(Price.game_id == game_id)
+        .all()
+    )
+
     if len(prices) < 2:
         raise HTTPException(
             status_code=404,
-            detail="Not enough prices to compare",
+            detail="Preços insuficientes para comparar (precisa de pelo menos 2 lojas)",
         )
 
-    # menor e maior preço
     min_price = min(prices, key=lambda x: x.price)
     max_price = max(prices, key=lambda x: x.price)
 
@@ -116,7 +133,6 @@ def compare_prices(game_id: int, db: Session = Depends(get_db)):
     maior_valor = float(max_price.price)
     economy = maior_valor - menor_valor
 
-    # buscar nome do site com menor preço
     site = db.query(Site).filter(Site.id == min_price.site_id).first()
 
     return {
@@ -125,4 +141,28 @@ def compare_prices(game_id: int, db: Session = Depends(get_db)):
         "diferenca": economy,
         "economia": economy,
         "site_melhor_preco": site.name if site else "Desconhecido",
+    }
+
+
+@router.post("/refresh/{game_id}")
+def refresh_prices_by_game(game_id: int, db: Session = Depends(get_db)):
+    """
+    Busca e atualiza automaticamente os preços de um jogo na API externa (CheapShark).
+    """
+    resultado = update_game_prices(game_id, db)
+    if "erro" in resultado:
+        raise HTTPException(status_code=404, detail=resultado["erro"])
+    return resultado
+
+
+@router.post("/refresh/all")
+def refresh_all_prices():
+    """
+    Busca e atualiza automaticamente os preços de TODOS os jogos na API externa.
+    """
+    resultados = update_all_games()
+    return {
+        "status": "concluído",
+        "total_jogos_processados": len(resultados),
+        "detalhes": resultados,
     }
