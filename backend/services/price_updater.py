@@ -20,6 +20,8 @@ def update_game_prices(game_id: int, db: Session) -> dict:
     # Busca preços externos pelo título do jogo
     precos_externos = fetch_prices(game.title)
 
+    print(f"DEBUG >>> precos_externos para '{game.title}': {precos_externos}")  # DEBUG
+
     if not precos_externos:
         return {
             "game_id": game_id,
@@ -31,6 +33,8 @@ def update_game_prices(game_id: int, db: Session) -> dict:
     novos_precos = []
 
     for item in precos_externos:
+        print(f"DEBUG >>> buscando site no banco: '{item['store_name']}'")  # DEBUG
+
         # Procura o site no banco pelo nome (busca parcial, ignora maiúsculas)
         site = (
             db.query(Site)
@@ -38,6 +42,8 @@ def update_game_prices(game_id: int, db: Session) -> dict:
             .filter(Site.active == True)
             .first()
         )
+
+        print(f"DEBUG >>> site encontrado: {site}")  # DEBUG
 
         if not site:
             continue  # Loja não cadastrada no banco, ignora

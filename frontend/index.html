@@ -63,6 +63,62 @@
             align-items: center;
         }
         form button { margin-top: 0;}
+
+        /* DESTAQUE NOVA FUNCIONALIDADE */
+        #auto-preco-box {
+            background: linear-gradient(135deg, #1e3a5f, #2563eb);
+            color: white;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+        }
+        #auto-preco-box h2 {
+            color: white;
+            margin: 0 0 6px 0;
+            font-size: 1.1em;
+        }
+        #auto-preco-box p {
+            margin: 0 0 12px 0;
+            font-size: 0.88em;
+            opacity: 0.9;
+        }
+        #auto-preco-box select {
+            width: 100%;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            padding: 8px;
+            font-size: 0.95em;
+            border: none;
+        }
+        #btnRefreshAuto {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1em;
+            width: 100%;
+            margin-top: 0;
+            transition: background 0.2s;
+        }
+        #btnRefreshAuto:hover { background: #059669; }
+        #btnRefreshAuto:disabled { background: #6b7280; cursor: not-allowed; }
+
+        #comparacao-precos { 
+            background: #f0fdf4; 
+            border: 1px solid #bbf7d0;
+            padding: 1em; 
+            border-radius: 8px; 
+            margin-bottom: 18px;
+        }
+        #refresh-status {
+            font-size: 0.85em;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+
         @media (max-width: 600px) {
             #content-container { padding: 14px 4px; }
             form { flex-direction: column; gap: 6px; }
@@ -88,7 +144,27 @@
         indicando claramente em qual site o jogo está mais barato.
     </p>
 
+    <!-- ====== DESTAQUE: BUSCA AUTOMÁTICA ====== -->
+    <div id="auto-preco-box">
+        <h2>🤖 Busca Automática de Preços (CheapShark)</h2>
+        <p>Selecione um jogo e clique no botão para buscar os preços atuais automaticamente nas lojas Steam, GOG, Epic Games e mais!</p>
+        <select id="selectGame"></select>
+        <button id="btnRefreshAuto">🔄 Buscar Preços Automaticamente</button>
+        <div id="refresh-status"></div>
+    </div>
+
+    <!-- BLOCO DE COMPARAÇÃO -->
+    <div id="comparacao-precos">
+        <strong>Menor preço: <span id="menor-preco">—</span></strong><br>
+        Maior preço: <span id="maior-preco">—</span><br>
+        Diferença: <span id="diferenca">—</span><br>
+        Economia potencial: <span id="economia">—</span>
+    </div>
+
+    <div id="priceResult" style="margin-top:4px; font-size:0.9rem; color:#111;"></div>
+
     <!-- FORMULÁRIO DE SITE -->
+    <h3>Cadastrar Site</h3>
     <form id="siteForm" autocomplete="off">
         <div style="flex: 1 1 160px;">
             <label for="siteName">Nome do Site</label>
@@ -111,22 +187,6 @@
 
     <h3>Sites cadastrados</h3>
     <div id="sitesList" style="margin-top:8px; margin-bottom:16px;"></div>
-
-    <!-- SELEÇÃO DE JOGO PARA COMPARAÇÃO -->
-    <div style="margin-bottom: 16px;">
-        <label for="selectGame" style="font-weight: bold;">Selecionar jogo para comparar preços:</label>
-        <select id="selectGame" style="margin-top: 6px; padding: 6px 12px; border-radius:5px; border:1px solid #bbb; width:100%;"></select>
-    </div>
-
-    <!-- BLOCO DE COMPARAÇÃO -->
-    <div id="comparacao-precos">
-        <strong>Menor preço: <span id="menor-preco"></span></strong><br>
-        Maior preço: <span id="maior-preco"></span><br>
-        Diferença: <span id="diferenca"></span><br>
-        Economia potencial: <span id="economia"></span>
-    </div>
-
-    <div id="priceResult" style="margin-top:4px; font-size:0.9rem; color:#111;"></div>
 
     <!-- FORMULÁRIO DE JOGO -->
     <div style="margin-top: 12px; margin-bottom: 4px;">
@@ -153,7 +213,7 @@
     <div id="gamesList" style="margin-top:8px; margin-bottom:16px;"></div>
 
     <!-- FORMULÁRIO DE PREÇO -->
-    <h3>Cadastro de Preço</h3>
+    <h3>Cadastro de Preço Manual</h3>
     <form id="priceForm" autocomplete="off">
         <div style="flex: 1 1 140px;">
             <label for="priceGameId">Jogo</label>
@@ -176,7 +236,6 @@
 
     <button id="refreshPriceFormBtn" style="background:#2563eb;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;">Atualizar opções de jogo/site</button>
 
-    <!-- Usa TODO o JS centralizado em frontend/js/api.js -->
     <script src="./js/api.js"></script>
 </div>
 </body>

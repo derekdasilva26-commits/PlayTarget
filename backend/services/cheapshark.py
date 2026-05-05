@@ -2,15 +2,15 @@ import httpx
 
 CHEAPSHARK_URL = "https://www.cheapshark.com/api/1.0"
 
-# Mapeamento: nome da loja no CheapShark → nome que você usa no banco
+# Mapeamento: storeID da CheapShark → nome que você usa no banco
 STORE_NAME_MAP = {
-    "Steam": "Steam",
-    "GOG": "GOG",
-    "Epic Games Store": "Epic Games",
-    "Fanatical": "Fanatical",
-    "Humble Store": "Humble Store",
-    "GamersGate": "GamersGate",
-    "Green Man Gaming": "Green Man Gaming",
+    "1": "Steam",
+    "7": "GOG",
+    "25": "Epic Games",
+    "31": "Fanatical",
+    "11": "Humble Store",
+    "8": "GamersGate",
+    "23": "Green Man Gaming",
 }
 
 
@@ -23,34 +23,39 @@ def fetch_prices(title: str) -> list[dict]:
         # Busca o jogo pelo título
         response = httpx.get(
             f"{CHEAPSHARK_URL}/games",
-            params={"title": title, "limit": 5},
+            params={"title": title.strip().strip("'\"")},
             timeout=10.0,
+            headers={"User-Agent": "PlayTarget/1.0"}
         )
         response.raise_for_status()
         games = response.json()
 
+        print(f"DEBUG cheapshark >>> games encontrados: {games}")
+
         if not games:
             return []
 
-        # Pega o primeiro resultado (mais relevante)
         game_id = games[0]["gameID"]
+        print(f"DEBUG cheapshark >>> usando gameID: {game_id}")
 
         # Busca detalhes do jogo (incluindo preços por loja)
         detail_response = httpx.get(
             f"{CHEAPSHARK_URL}/games",
             params={"id": game_id},
             timeout=10.0,
+            headers={"User-Agent": "PlayTarget/1.0"}
         )
         detail_response.raise_for_status()
         detail = detail_response.json()
 
-        results = []
         deals = detail.get("deals", [])
+        print(f"DEBUG cheapshark >>> deals: {deals}")
 
+        results = []
         for deal in deals:
-            store_name = deal.get("storeName", "")
-            # Só inclui lojas que temos mapeadas
-            mapped_name = STORE_NAME_MAP.get(store_name)
+            store_id = str(deal.get("storeID", ""))
+            print(f"DEBUG cheapshark >>> storeID: {store_id}")
+            mapped_name = STORE_NAME_MAP.get(store_id)
             if mapped_name:
                 try:
                     price = float(deal.get("price", 0))
@@ -62,10 +67,12 @@ def fetch_prices(title: str) -> list[dict]:
                 except (ValueError, TypeError):
                     continue
 
+        print(f"DEBUG cheapshark >>> results finais: {results}")
         return results
 
-    except httpx.RequestError:
-        # API fora do ar ou sem internet — retorna lista vazia sem derrubar o servidor
+    except httpx.RequestError as e:
+        print(f"DEBUG cheapshark >>> httpx.RequestError: {e}")
         return []
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG cheapshark >>> Exception: {e}")
         return []

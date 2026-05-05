@@ -28,8 +28,9 @@ const priceValue = document.getElementById("priceValue");
 const priceCurrency = document.getElementById("priceCurrency");
 const priceResult = document.getElementById("priceResult");
 
-// NOVO: select para comparação automática
 const selectGame = document.getElementById("selectGame");
+const btnRefreshAuto = document.getElementById("btnRefreshAuto");
+const refreshStatus = document.getElementById("refresh-status");
 
 // ==========================
 // HELPERS
@@ -37,9 +38,6 @@ const selectGame = document.getElementById("selectGame");
 function setStatus(ok) {
   if (!statusEl) return;
   statusEl.textContent = ok ? "ONLINE" : "OFFLINE";
-  statusEl.className = ok
-    ? "font-bold text-green-700"
-    : "font-bold text-red-700";
 }
 
 async function checkBackend() {
@@ -60,9 +58,9 @@ async function safeText(res) {
 }
 
 // ==========================
-// SITES CACHE (para mostrar nome da plataforma nos preços)
+// SITES CACHE
 // ==========================
-let sitesCache = new Map(); // site_id -> {id,name,url,active,...}
+let sitesCache = new Map();
 
 async function refreshSitesCache() {
   const res = await fetch(`${API_URL}/sites/`);
@@ -84,31 +82,18 @@ async function fetchGames() {
 
   games.forEach((game) => {
     const div = document.createElement("div");
-    div.className = "border p-4 rounded bg-gray-50";
 
     div.innerHTML = `
-      <h3 class="font-bold text-lg">${game.title}</h3>
-      <p class="text-sm text-gray-600">${game.genre}</p>
-      <p class="mt-2">${game.description || ""}</p>
-
-      <div class="mt-3 flex flex-wrap gap-2">
-        <button data-game-id="${game.id}"
-          class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 view-prices-btn">
-          Ver Preços
-        </button>
-
-        <button data-game-id="${game.id}"
-          class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 edit-game-btn">
-          Editar
-        </button>
-
-        <button data-game-id="${game.id}"
-          class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 delete-game-btn">
-          Remover
-        </button>
+      <h3 style="font-weight:bold; margin:0 0 2px 0">${game.title}</h3>
+      <p style="margin:0; font-size:0.9em; color:#555">${game.genre}</p>
+      <p style="margin:4px 0 8px 0">${game.description || ""}</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button data-game-id="${game.id}" class="view-prices-btn" style="background:#10b981;color:#fff;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;">Ver Preços</button>
+        <button data-game-id="${game.id}" class="edit-game-btn" style="background:#f59e0b;color:#fff;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;">Editar</button>
+        <button data-game-id="${game.id}" class="delete-game-btn" style="background:#ef4444;color:#fff;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;">Remover</button>
       </div>
-
-      <div id="prices-${game.id}" class="mt-3 text-sm text-gray-700"></div>
+      <div id="prices-${game.id}" style="margin-top:8px; font-size:0.9rem; color:#111;"></div>
+      <hr style="margin:12px 0; border:none; border-top:1px solid #eee;">
     `;
 
     gamesList.appendChild(div);
@@ -136,7 +121,7 @@ async function fetchGames() {
   });
 }
 
-// NOVO: preencher combo de jogos para comparação automática
+// Preencher combo de jogos para busca automática
 async function preencherComboJogos() {
   if (!selectGame) return;
 
@@ -154,15 +139,51 @@ async function preencherComboJogos() {
   });
 
   if (games.length > 0) {
-    // mostra comparação do primeiro jogo ao carregar
     buscarComparacao(games[0].id);
   }
 }
 
+// Quando muda o jogo no combo, atualiza a comparação automaticamente
 if (selectGame) {
   selectGame.addEventListener("change", () => {
     const id = selectGame.value;
     if (id) buscarComparacao(id);
+  });
+}
+
+// Botão de busca automática (CheapShark)
+if (btnRefreshAuto) {
+  btnRefreshAuto.addEventListener("click", async () => {
+    const id = selectGame?.value;
+    if (!id) return;
+
+    btnRefreshAuto.disabled = true;
+    btnRefreshAuto.textContent = "⏳ Buscando preços...";
+    refreshStatus.textContent = "";
+    refreshStatus.style.color = "#fff";
+
+    try {
+      const res = await fetch(`${API_URL}/prices/refresh/${id}`, { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok && data.total_inserido > 0) {
+        refreshStatus.textContent = `✅ ${data.total_inserido} preço(s) encontrado(s) e salvo(s)!`;
+        refreshStatus.style.color = "#bbf7d0";
+        await buscarComparacao(id);
+      } else if (res.ok && data.total_inserido === 0) {
+        refreshStatus.textContent = "⚠️ Nenhum preço novo encontrado nas lojas.";
+        refreshStatus.style.color = "#fde68a";
+      } else {
+        refreshStatus.textContent = "❌ Erro ao buscar preços.";
+        refreshStatus.style.color = "#fca5a5";
+      }
+    } catch (e) {
+      refreshStatus.textContent = "❌ Erro de conexão com o backend.";
+      refreshStatus.style.color = "#fca5a5";
+    }
+
+    btnRefreshAuto.disabled = false;
+    btnRefreshAuto.textContent = "🔄 Buscar Preços Automaticamente";
   });
 }
 
@@ -209,28 +230,20 @@ async function fetchSites() {
 
   sites.forEach((site) => {
     const div = document.createElement("div");
-    div.className = "border p-4 rounded bg-gray-50";
 
     div.innerHTML = `
-      <h3 class="font-bold text-lg">${site.name}</h3>
-      <p class="text-sm text-gray-600">${site.url}</p>
-      <p class="mt-2 text-sm">Status: ${
+      <h3 style="font-weight:bold; margin:0 0 2px 0">${site.name}</h3>
+      <p style="margin:0; font-size:0.9em; color:#555">${site.url}</p>
+      <p style="margin:4px 0 8px 0; font-size:0.9em;">Status: ${
         site.active
-          ? "<span class='text-green-700 font-semibold'>Ativo</span>"
-          : "<span class='text-red-700 font-semibold'>Inativo</span>"
+          ? "<span style='color:#059669;font-weight:bold'>Ativo</span>"
+          : "<span style='color:#dc2626;font-weight:bold'>Inativo</span>"
       }</p>
-
-      <div class="mt-3 flex flex-wrap gap-2">
-        <button data-site-id="${site.id}"
-          class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 edit-site-btn">
-          Editar
-        </button>
-
-        <button data-site-id="${site.id}"
-          class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 delete-site-btn">
-          Remover
-        </button>
+      <div style="display:flex; gap:8px;">
+        <button data-site-id="${site.id}" class="edit-site-btn" style="background:#f59e0b;color:#fff;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;">Editar</button>
+        <button data-site-id="${site.id}" class="delete-site-btn" style="background:#ef4444;color:#fff;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;">Remover</button>
       </div>
+      <hr style="margin:12px 0; border:none; border-top:1px solid #eee;">
     `;
 
     sitesList.appendChild(div);
@@ -315,23 +328,20 @@ async function loadPrices(gameId) {
   pricesDiv.innerHTML = prices
     .map((p) => {
       const siteName = sitesCache.get(p.site_id)?.name || `Site #${p.site_id}`;
-      const value = `${p.currency || "BRL"} ${Number(p.price).toFixed(2)}`;
+      const value = `${p.currency || "USD"} ${Number(p.price).toFixed(2)}`;
 
       return `
-        <div class="flex items-center justify-between gap-2 py-1">
-          <div class="text-sm">
-            <span class="font-semibold">${siteName}</span>
-            <span class="text-gray-600">— ${value}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #f0f0f0;">
+          <div>
+            <span style="font-weight:bold">${siteName}</span>
+            <span style="color:#555"> — ${value}</span>
           </div>
-
-          <div class="flex items-center gap-2">
-            <button class="text-xs bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
-              onclick="editPrice(${p.id}, ${p.game_id}, ${p.site_id}, ${p.price}, '${
-        p.currency || "BRL"
-      }')">
+          <div style="display:flex; gap:6px;">
+            <button style="font-size:0.8em;background:#f59e0b;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;"
+              onclick="editPrice(${p.id}, ${p.game_id}, ${p.site_id}, ${p.price}, '${p.currency || "USD"}')">
               Editar
             </button>
-            <button class="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+            <button style="font-size:0.8em;background:#ef4444;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;"
               onclick="deletePrice(${p.id}, ${p.game_id})">
               Remover
             </button>
@@ -411,7 +421,6 @@ if (priceForm) {
     if (priceCurrency) priceCurrency.value = "BRL";
 
     await loadPrices(payload.game_id);
-    // também atualiza comparação do jogo selecionado se o combo usar esse id
     if (selectGame && String(payload.game_id) === selectGame.value) {
       buscarComparacao(payload.game_id);
     }
@@ -419,48 +428,45 @@ if (priceForm) {
 }
 
 // ==========================
-// COMPARAÇÃO AUTOMÁTICA DE PREÇOS (AC2)
+// COMPARAÇÃO AUTOMÁTICA (AC2)
 // ==========================
-function buscarComparacao(gameId) {
-  fetch(`${API_URL}/prices/game/${gameId}/comparison`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Sem dados");
-      }
-      return response.json();
-    })
-    .then((dados) => {
-      const infoDiv = document.getElementById("priceResult");
+async function buscarComparacao(gameId) {
+  try {
+    const response = await fetch(`${API_URL}/prices/game/${gameId}/comparison`);
 
-      document.getElementById("menor-preco").innerHTML =
-        `R$ ${dados.menor_preco.toFixed(2)} (${dados.site_melhor_preco})`;
-      document.getElementById("maior-preco").textContent =
-        `R$ ${dados.maior_preco.toFixed(2)}`;
-      document.getElementById("diferenca").textContent =
-        `R$ ${dados.diferenca.toFixed(2)}`;
-      document.getElementById("economia").textContent =
-        `R$ ${dados.economia.toFixed(2)}`;
+    if (!response.ok) throw new Error("Sem dados");
 
-      // NOVA MENSAGEM BEM EXPLICITA
-      if (infoDiv) {
-        infoDiv.innerHTML =
-          `<strong>Economia potencial:</strong> ` +
-          `você pode economizar <strong>R$ ${dados.economia.toFixed(
-            2
-          )}</strong> ` +
-          `se comprar no site <strong>${dados.site_melhor_preco}</strong> em vez do mais caro.`;
-      }
-    })
-    .catch(() => {
-      document.getElementById(
-        "comparacao-precos"
-      ).innerHTML = "<em>Nenhuma comparação disponível para este jogo.</em>";
-      if (priceResult) {
-        priceResult.textContent =
-          "Cadastre preços em pelo menos dois sites para ver a economia e o site mais barato.";
-      }
-    });
+    const dados = await response.json();
+    const infoDiv = document.getElementById("priceResult");
+
+    document.getElementById("menor-preco").innerHTML =
+      `USD ${dados.menor_preco.toFixed(2)} (${dados.site_melhor_preco})`;
+    document.getElementById("maior-preco").textContent =
+      `USD ${dados.maior_preco.toFixed(2)}`;
+    document.getElementById("diferenca").textContent =
+      `USD ${dados.diferenca.toFixed(2)}`;
+    document.getElementById("economia").textContent =
+      `USD ${dados.economia.toFixed(2)}`;
+
+    if (infoDiv) {
+      infoDiv.innerHTML =
+        `<strong>💡 Dica:</strong> ` +
+        `você pode economizar <strong>USD ${dados.economia.toFixed(2)}</strong> ` +
+        `comprando em <strong>${dados.site_melhor_preco}</strong> em vez do mais caro.`;
+    }
+
+    document.getElementById("comparacao-precos").style.display = "block";
+
+  } catch {
+    document.getElementById("comparacao-precos").innerHTML =
+      "<em>Nenhuma comparação disponível para este jogo.</em>";
+    if (priceResult) {
+      priceResult.textContent =
+        "Clique em 'Buscar Preços Automaticamente' ou cadastre preços em pelo menos dois sites.";
+    }
+  }
 }
+
 // ==========================
 // EDITAR / REMOVER JOGO
 // ==========================
@@ -563,7 +569,7 @@ async function editSite(siteId) {
 }
 
 // ==========================
-// EDITAR / REMOVER PREÇO (funções globais para onclick)
+// EDITAR / REMOVER PREÇO
 // ==========================
 async function deletePrice(priceId, gameId) {
   const ok = confirm("Tem certeza que deseja remover este preço?");
@@ -608,7 +614,6 @@ async function editPrice(priceId, gameId, siteId, currentPrice, currentCurrency)
   }
 }
 
-// expor no window para o onclick funcionar em todos os browsers
 window.deletePrice = deletePrice;
 window.editPrice = editPrice;
 
