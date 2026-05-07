@@ -9,18 +9,11 @@ from backend.services.cheapshark import fetch_prices
 
 
 def update_game_prices(game_id: int, db: Session) -> dict:
-    """
-    Atualiza os preços de um jogo específico buscando na API CheapShark.
-    Retorna um dict com o resultado da operação.
-    """
     game = db.query(Game).filter(Game.id == game_id).first()
     if not game:
         return {"erro": f"Jogo com id={game_id} não encontrado"}
 
-    # Busca preços externos pelo título do jogo
     precos_externos = fetch_prices(game.title)
-
-    print(f"DEBUG >>> precos_externos para '{game.title}': {precos_externos}")  # DEBUG
 
     if not precos_externos:
         return {
@@ -28,14 +21,12 @@ def update_game_prices(game_id: int, db: Session) -> dict:
             "titulo": game.title,
             "status": "nenhum preço encontrado na API externa",
             "novos_precos": [],
+            "total_inserido": 0,
         }
 
     novos_precos = []
 
     for item in precos_externos:
-        print(f"DEBUG >>> buscando site no banco: '{item['store_name']}'")  # DEBUG
-
-        # Procura o site no banco pelo nome (busca parcial, ignora maiúsculas)
         site = (
             db.query(Site)
             .filter(Site.name.ilike(f"%{item['store_name']}%"))
@@ -43,22 +34,32 @@ def update_game_prices(game_id: int, db: Session) -> dict:
             .first()
         )
 
-        print(f"DEBUG >>> site encontrado: {site}")  # DEBUG
-
         if not site:
-            continue  # Loja não cadastrada no banco, ignora
+            continue
 
-        # Insere NOVA linha de preço (não sobrescreve — mantém histórico)
-        novo_preco = Price(
-            game_id=game_id,
-            site_id=site.id,
-            price=item["price"],
-            currency=item["currency"],
-            source="cheapshark",
-            checked_at=datetime.utcnow(),
-            created_at=datetime.utcnow(),
+        # UPSERT: atualiza se já existe, insere se não existe
+        preco_existente = (
+            db.query(Price)
+            .filter(Price.game_id == game_id, Price.site_id == site.id)
+            .first()
         )
-        db.add(novo_preco)
+
+        if preco_existente:
+            preco_existente.price = item["price"]
+            preco_existente.currency = item["currency"]
+            preco_existente.checked_at = datetime.utcnow()
+        else:
+            novo_preco = Price(
+                game_id=game_id,
+                site_id=site.id,
+                price=item["price"],
+                currency=item["currency"],
+                source="cheapshark",
+                checked_at=datetime.utcnow(),
+                created_at=datetime.utcnow(),
+            )
+            db.add(novo_preco)
+
         novos_precos.append({
             "site": site.name,
             "preco": item["price"],
@@ -77,10 +78,6 @@ def update_game_prices(game_id: int, db: Session) -> dict:
 
 
 def update_all_games() -> list[dict]:
-    """
-    Atualiza preços de TODOS os jogos. Usado pelo agendador automático.
-    Cria sua própria sessão de banco (não depende do FastAPI).
-    """
     db = SessionLocal()
     resultados = []
     try:
