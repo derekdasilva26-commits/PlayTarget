@@ -1,5 +1,8 @@
 const API_URL = "http://127.0.0.1:8001";
-const USD_TO_BRL = 5.70;
+
+let USD_TO_BRL = 5.70;
+let USD_TO_BRL_UPDATED_AT = "";
+let USD_TO_BRL_SOURCE = "";
 
 fetch(`${API_URL}/health`)
   .then(res => res.json())
@@ -55,6 +58,37 @@ async function safeText(res) {
     return await res.text();
   } catch {
     return "";
+  }
+}
+
+async function loadExchangeRate() {
+  const box = document.getElementById("exchange-rate-box");
+  if (box) {
+    box.textContent = "Cotação do dólar: carregando...";
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/exchange-rate/usd-brl`);
+    if (!res.ok) throw new Error("Falha ao buscar cotação");
+
+    const data = await res.json();
+
+    USD_TO_BRL = Number(data.rate);
+    USD_TO_BRL_UPDATED_AT = data.updated_at || "";
+    USD_TO_BRL_SOURCE = data.source || "Banco Central";
+
+    if (box) {
+      box.innerHTML =
+        `<strong>Cotação atual:</strong> USD 1 = R$ ${USD_TO_BRL.toFixed(4)} ` +
+        `<br><span style="color:#475569;">Fonte: ${USD_TO_BRL_SOURCE}</span>` +
+        `<br><span style="color:#475569;">Atualizado em: ${USD_TO_BRL_UPDATED_AT}</span>`;
+    }
+  } catch {
+    if (box) {
+      box.innerHTML =
+        `<strong>Cotação atual:</strong> USD 1 = R$ ${USD_TO_BRL.toFixed(2)}` +
+        ` <span style="color:#b45309;">(valor padrão de segurança)</span>`;
+    }
   }
 }
 
@@ -328,13 +362,13 @@ async function loadPrices(gameId) {
       const siteName = sitesCache.get(p.site_id)?.name || `Site #${p.site_id}`;
       const usd = Number(p.price).toFixed(2);
       const brl = (Number(p.price) * USD_TO_BRL).toFixed(2);
+      const value = `USD ${usd} (R$ ${brl})`;
 
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #f0f0f0;">
           <div>
             <span style="font-weight:bold">${siteName}</span>
-            <span style="color:#555"> — USD ${usd}</span>
-            <span style="color:#888; font-size:0.85em"> (R$ ${brl})</span>
+            <span style="color:#555"> — ${value}</span>
           </div>
           <div style="display:flex; gap:6px;">
             <button style="font-size:0.8em;background:#f59e0b;color:#fff;border:none;padding:3px 8px;border-radius:3px;cursor:pointer;"
@@ -399,7 +433,7 @@ if (priceForm) {
       game_id: Number(priceGameId.value),
       site_id: Number(priceSiteId.value),
       price: Number(priceValue.value),
-      currency: (priceCurrency?.value || "USD").trim(),
+      currency: (priceCurrency?.value || "BRL").trim(),
     };
 
     if (priceResult) priceResult.textContent = "Enviando...";
@@ -418,7 +452,7 @@ if (priceForm) {
 
     if (priceResult) priceResult.textContent = "Preço cadastrado com sucesso!";
     priceForm.reset();
-    if (priceCurrency) priceCurrency.value = "USD";
+    if (priceCurrency) priceCurrency.value = "BRL";
 
     await loadPrices(payload.game_id);
     if (selectGame && String(payload.game_id) === selectGame.value) {
@@ -438,50 +472,40 @@ async function buscarComparacao(gameId) {
 
     const dados = await response.json();
     const infoDiv = document.getElementById("priceResult");
-    const comparacaoDiv = document.getElementById("comparacao-precos");
 
     const menorBRL = (dados.menor_preco * USD_TO_BRL).toFixed(2);
     const maiorBRL = (dados.maior_preco * USD_TO_BRL).toFixed(2);
+    const diferencaBRL = (dados.diferenca * USD_TO_BRL).toFixed(2);
     const economiaBRL = (dados.economia * USD_TO_BRL).toFixed(2);
 
-    // Tabela com todos os preços ordenados do menor para o maior
-    const tabelaPrecos = dados.todos_os_precos
-      .sort((a, b) => a.preco - b.preco)
-      .map((p, i) => {
-        const brl = (p.preco * USD_TO_BRL).toFixed(2);
-        const destaque = i === 0 ? "color:#059669;font-weight:bold" : "color:#374151";
-        return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #e5e7eb;">
-          <span style="${destaque}">${i === 0 ? "🏆 " : ""}${p.site}</span>
-          <span style="${destaque}">USD ${p.preco.toFixed(2)} <span style="color:#6b7280;font-size:0.85em;font-weight:normal">(R$ ${brl})</span></span>
-        </div>`;
-      })
-      .join("");
+    document.getElementById("menor-preco").innerHTML =
+      `USD ${dados.menor_preco.toFixed(2)} (R$ ${menorBRL}) - ${dados.site_melhor_preco}`;
 
-    comparacaoDiv.innerHTML = `
-      <div style="margin-bottom:10px;">
-        <strong>🏆 Menor preço:</strong>
-        <span style="color:#059669;font-weight:bold"> USD ${dados.menor_preco.toFixed(2)} = R$ ${menorBRL} — ${dados.site_melhor_preco}</span><br>
-        ${dados.todos_os_precos.length > 1 ? `
-        <strong>Maior preço:</strong> USD ${dados.maior_preco.toFixed(2)} = R$ ${maiorBRL}<br>
-        <strong>💰 Economia:</strong> <span style="color:#dc2626;font-weight:bold">R$ ${economiaBRL}</span>
-        ` : ""}
-      </div>
-      <div style="font-size:0.9em;font-weight:bold;margin-bottom:4px;">Preços por loja:</div>
-      ${tabelaPrecos}
-    `;
+    document.getElementById("maior-preco").textContent =
+      `USD ${dados.maior_preco.toFixed(2)} (R$ ${maiorBRL})`;
+
+    document.getElementById("diferenca").textContent =
+      `USD ${dados.diferenca.toFixed(2)} (R$ ${diferencaBRL})`;
+
+    document.getElementById("economia").textContent =
+      `USD ${dados.economia.toFixed(2)} (R$ ${economiaBRL})`;
 
     if (infoDiv) {
-      if (dados.todos_os_precos.length > 1) {
-        infoDiv.innerHTML = `<strong>💡 Dica:</strong> economize <strong>R$ ${economiaBRL}</strong> comprando em <strong>${dados.site_melhor_preco}</strong>!`;
-      } else {
-        infoDiv.innerHTML = `<em>Apenas 1 loja encontrada. Clique em buscar novamente para mais resultados!</em>`;
-      }
+      infoDiv.innerHTML =
+        `<strong>💡 Dica:</strong> ` +
+        `você pode economizar <strong>USD ${dados.economia.toFixed(2)} / R$ ${economiaBRL}</strong> ` +
+        `comprando em <strong>${dados.site_melhor_preco}</strong>.`;
     }
 
+    document.getElementById("comparacao-precos").style.display = "block";
+
   } catch {
-    const comparacaoDiv = document.getElementById("comparacao-precos");
-    if (comparacaoDiv) comparacaoDiv.innerHTML = "<em>Nenhum preço encontrado. Clique em 'Buscar Preços Automaticamente'!</em>";
-    if (priceResult) priceResult.textContent = "";
+    document.getElementById("comparacao-precos").innerHTML =
+      "<em>Nenhuma comparação disponível para este jogo.</em>";
+    if (priceResult) {
+      priceResult.textContent =
+        "Clique em 'Buscar Preços Automaticamente' ou cadastre preços em pelo menos dois sites.";
+    }
   }
 }
 
@@ -640,6 +664,7 @@ window.editPrice = editPrice;
 // ==========================
 (async function init() {
   await checkBackend();
+  await loadExchangeRate();
   await fetchGames();
   await fetchSites();
   await refreshPriceFormOptions();
