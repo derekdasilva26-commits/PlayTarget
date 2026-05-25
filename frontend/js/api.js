@@ -36,6 +36,20 @@ const selectGame = document.getElementById("selectGame");
 const btnRefreshAuto = document.getElementById("btnRefreshAuto");
 const refreshStatus = document.getElementById("refresh-status");
 
+const wishlistForm = document.getElementById("wishlistForm");
+const wishlistGameId = document.getElementById("wishlistGameId");
+const wishlistTargetPrice = document.getElementById("wishlistTargetPrice");
+const wishlistMessage = document.getElementById("wishlistMessage");
+const wishlistList = document.getElementById("wishlistList");
+const refreshWishlistBtn = document.getElementById("refreshWishlistBtn");
+
+const historyForm = document.getElementById("historyForm");
+const historyGameId = document.getElementById("historyGameId");
+const historyInsight = document.getElementById("historyInsight");
+const historyList = document.getElementById("historyList");
+
+let historyChartInstance = null;
+
 // ==========================
 // HELPERS
 // ==========================
@@ -660,6 +674,352 @@ window.deletePrice = deletePrice;
 window.editPrice = editPrice;
 
 // ==========================
+// WISHLIST
+// ==========================
+async function refreshWishlistGameOptions() {
+  if (!wishlistGameId) return;
+
+  const res = await fetch(`${API_URL}/games/`);
+  if (!res.ok) return;
+
+  const games = await res.json();
+  wishlistGameId.innerHTML = "";
+
+  games.forEach((game) => {
+    const opt = document.createElement("option");
+    opt.value = game.id;
+    opt.textContent = `[${game.id}] ${game.title}`;
+    wishlistGameId.appendChild(opt);
+  });
+}
+
+async function fetchWishlistAlerts() {
+  if (!wishlistList) return;
+
+  wishlistList.innerHTML = "Carregando wishlist...";
+
+  try {
+    const res = await fetch(`${API_URL}/wishlist/alerts`);
+    if (!res.ok) throw new Error("Erro ao buscar wishlist");
+
+    const items = await res.json();
+
+    if (!items.length) {
+      wishlistList.innerHTML = "<em style='color:#cbd5e1;'>Nenhum jogo adicionado à wishlist ainda.</em>";
+      return;
+    }
+
+    wishlistList.innerHTML = items.map((item) => {
+      const bestPriceBRL = item.current_best_price !== null
+        ? (item.current_best_price * USD_TO_BRL).toFixed(2)
+        : null;
+
+      const targetBRL = Number(item.target_price).toFixed(2);
+
+      const statusHtml = item.opportunity
+        ? `<span style="color:#34d399;font-weight:bold;">✅ Oportunidade encontrada</span>`
+        : `<span style="color:#fbbf24;font-weight:bold;">⏳ Ainda acima do preço-alvo</span>`;
+
+      const currentPriceHtml = bestPriceBRL
+        ? `R$ ${bestPriceBRL}`
+        : "Sem preço disponível";
+
+      const siteHtml = item.best_site ? item.best_site : "—";
+
+      return `
+        <div style="border:1px solid rgba(148,163,184,0.18); border-radius:12px; padding:12px; margin-bottom:10px; background:rgba(255,255,255,0.04); color:#f8fbff; box-shadow:0 8px 18px rgba(0,0,0,0.18);">
+          <div style="font-weight:bold; font-size:1rem; margin-bottom:6px; color:#ffffff;">${item.game_title}</div>
+          <div style="font-size:0.92rem; color:#dbeafe;">Preço-alvo: <strong style="color:#ffffff;">R$ ${targetBRL}</strong></div>
+          <div style="font-size:0.92rem; color:#dbeafe;">Melhor preço atual: <strong style="color:#ffffff;">${currentPriceHtml}</strong></div>
+          <div style="font-size:0.92rem; color:#dbeafe;">Loja: <strong style="color:#ffffff;">${siteHtml}</strong></div>
+          <div style="margin-top:6px;">${statusHtml}</div>
+          <div style="font-size:0.88rem; color:#cbd5e1; margin-top:4px;">${item.message}</div>
+          <button
+            style="margin-top:10px; background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:bold;"
+            onclick="deleteWishlistItem(${item.wishlist_id})"
+          >
+            Remover da Wishlist
+          </button>
+        </div>
+      `;
+    }).join("");
+  } catch {
+    wishlistList.innerHTML = "<em style='color:#fca5a5;'>Erro ao carregar wishlist.</em>";
+  }
+}
+
+async function createWishlistItem(payload) {
+  const res = await fetch(`${API_URL}/wishlist/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(await safeText(res));
+  }
+
+  return await res.json();
+}
+
+async function deleteWishlistItem(wishlistId) {
+  const ok = confirm("Tem certeza que deseja remover este item da wishlist?");
+  if (!ok) return;
+
+  const res = await fetch(`${API_URL}/wishlist/${wishlistId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    alert("Erro ao remover item da wishlist.");
+    return;
+  }
+
+  await fetchWishlistAlerts();
+}
+
+window.deleteWishlistItem = deleteWishlistItem;
+
+if (wishlistForm) {
+  wishlistForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      game_id: Number(wishlistGameId.value),
+      target_price: Number(wishlistTargetPrice.value),
+    };
+
+    if (wishlistMessage) {
+      wishlistMessage.style.color = "#111827";
+      wishlistMessage.textContent = "Adicionando à wishlist...";
+    }
+
+    try {
+      await createWishlistItem(payload);
+
+      if (wishlistMessage) {
+        wishlistMessage.style.color = "#059669";
+        wishlistMessage.textContent = "Jogo adicionado à wishlist com sucesso!";
+      }
+
+      wishlistForm.reset();
+      await refreshWishlistGameOptions();
+      await fetchWishlistAlerts();
+    } catch (err) {
+      if (wishlistMessage) {
+        wishlistMessage.style.color = "#dc2626";
+        wishlistMessage.textContent = `Erro ao adicionar à wishlist: ${err.message}`;
+      }
+    }
+  });
+}
+
+if (refreshWishlistBtn) {
+  refreshWishlistBtn.addEventListener("click", fetchWishlistAlerts);
+}
+
+// ==========================
+// HISTÓRICO / GRÁFICO / INSIGHT
+// ==========================
+function renderHistoryList(items) {
+  if (!historyList) return;
+
+  if (!items.length) {
+    historyList.innerHTML = "<em style='color:#cbd5e1;'>Nenhum histórico encontrado.</em>";
+    return;
+  }
+
+  historyList.innerHTML = items.map((item) => {
+    const priceBRL = (Number(item.price) * USD_TO_BRL).toFixed(2);
+    const checkedAt = new Date(item.checked_at).toLocaleString("pt-BR");
+
+    return `
+      <div style="border-bottom:1px solid rgba(148,163,184,0.14); padding:10px 0;">
+        <div style="font-weight:bold; color:#ffffff;">${item.site_name}</div>
+        <div style="font-size:0.92rem; color:#e5eefc;">
+          USD ${Number(item.price).toFixed(2)} (R$ ${priceBRL})
+        </div>
+        <div style="font-size:0.88rem; color:#aebed8;">
+          Fonte: ${item.source} • Data: ${checkedAt}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderHistoryChart(items) {
+  const canvas = document.getElementById("historyChart");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  if (historyChartInstance) {
+    historyChartInstance.destroy();
+  }
+
+  const labels = items.map((item) => {
+    const dt = new Date(item.checked_at);
+    return dt.toLocaleString("pt-BR");
+  });
+
+  const valuesBRL = items.map((item) => Number(item.price) * USD_TO_BRL);
+
+  historyChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Preço em R$",
+          data: valuesBRL,
+          borderColor: "#60a5fa",
+          backgroundColor: "rgba(96, 165, 250, 0.20)",
+          tension: 0.30,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: "#22d3ee",
+          pointBorderColor: "#0f172a",
+          pointBorderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          labels: {
+            color: "#e5eefc",
+            font: {
+              size: 12,
+              weight: "bold",
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: "#cbd5e1",
+            maxRotation: 35,
+            minRotation: 20,
+          },
+          grid: {
+            color: "rgba(148,163,184,0.12)",
+          },
+        },
+        y: {
+          beginAtZero: false,
+          ticks: {
+            color: "#cbd5e1",
+            callback: function(value) {
+              return "R$ " + Number(value).toFixed(2);
+            }
+          },
+          grid: {
+            color: "rgba(148,163,184,0.12)",
+          },
+        }
+      }
+    }
+  });
+}
+
+async function refreshHistoryGameOptions() {
+  if (!historyGameId) return;
+
+  const res = await fetch(`${API_URL}/games/`);
+  if (!res.ok) return;
+
+  const games = await res.json();
+  historyGameId.innerHTML = "";
+
+  games.forEach((game) => {
+    const opt = document.createElement("option");
+    opt.value = game.id;
+    opt.textContent = `[${game.id}] ${game.title}`;
+    historyGameId.appendChild(opt);
+  });
+}
+
+async function fetchPriceHistory(gameId) {
+  const res = await fetch(`${API_URL}/prices/game/${gameId}/history`);
+  if (!res.ok) {
+    throw new Error("Não foi possível carregar o histórico.");
+  }
+  return await res.json();
+}
+
+async function fetchPriceInsight(gameId) {
+  const res = await fetch(`${API_URL}/prices/game/${gameId}/insight`);
+  if (!res.ok) {
+    throw new Error("Não foi possível carregar o insight.");
+  }
+  return await res.json();
+}
+
+function renderHistoryInsight(insight) {
+  if (!historyInsight) return;
+
+  const historicalLowBRL = (Number(insight.historical_low) * USD_TO_BRL).toFixed(2);
+  const currentBestBRL = (Number(insight.current_best) * USD_TO_BRL).toFixed(2);
+
+  const status = insight.is_good_time_to_buy
+    ? `<span style="color:#34d399; font-weight:bold;">✅ Ótimo momento para comprar</span>`
+    : `<span style="color:#fbbf24; font-weight:bold;">⚠️ Ainda não é o melhor momento</span>`;
+
+  historyInsight.innerHTML = `
+    <div style="padding:12px; border:1px solid rgba(96,165,250,0.30); background:rgba(59,130,246,0.10); border-radius:12px; color:#eaf2ff;">
+      <div style="margin-bottom:6px;">${status}</div>
+      <div style="font-size:0.93rem; color:#dbeafe;">
+        <strong style="color:#ffffff;">Menor preço histórico:</strong> USD ${Number(insight.historical_low).toFixed(2)} (R$ ${historicalLowBRL}) - ${insight.historical_low_site}
+      </div>
+      <div style="font-size:0.93rem; color:#dbeafe;">
+        <strong style="color:#ffffff;">Melhor preço atual:</strong> USD ${Number(insight.current_best).toFixed(2)} (R$ ${currentBestBRL}) - ${insight.current_best_site}
+      </div>
+      <div style="font-size:0.9rem; color:#cbd5e1; margin-top:6px;">
+        ${insight.message}
+      </div>
+    </div>
+  `;
+}
+
+async function loadHistoryAndInsight(gameId) {
+  try {
+    if (historyList) historyList.innerHTML = "<span style='color:#cbd5e1;'>Carregando histórico...</span>";
+    if (historyInsight) historyInsight.innerHTML = "<span style='color:#cbd5e1;'>Carregando insight...</span>";
+
+    const [historyItems, insight] = await Promise.all([
+      fetchPriceHistory(gameId),
+      fetchPriceInsight(gameId),
+    ]);
+
+    renderHistoryList(historyItems);
+    renderHistoryChart(historyItems);
+    renderHistoryInsight(insight);
+  } catch (err) {
+    if (historyList) {
+      historyList.innerHTML = `<em style="color:#fca5a5;">${err.message}</em>`;
+    }
+    if (historyInsight) {
+      historyInsight.innerHTML = "";
+    }
+    console.error("Erro ao carregar histórico:", err);
+  }
+}
+
+if (historyForm) {
+  historyForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const gameId = Number(historyGameId.value);
+    if (!gameId) return;
+
+    await loadHistoryAndInsight(gameId);
+  });
+}
+
+// ==========================
 // INICIALIZAÇÃO
 // ==========================
 (async function init() {
@@ -669,4 +1029,11 @@ window.editPrice = editPrice;
   await fetchSites();
   await refreshPriceFormOptions();
   await preencherComboJogos();
+  await refreshWishlistGameOptions();
+  await fetchWishlistAlerts();
+  await refreshHistoryGameOptions();
+
+  if (historyGameId && historyGameId.value) {
+    await loadHistoryAndInsight(Number(historyGameId.value));
+  }
 })();
