@@ -26,7 +26,6 @@ def get_db():
 
 @router.post("/", response_model=PriceResponse)
 def create_price(price: PriceCreate, db: Session = Depends(get_db)):
-    """Criar um novo preço manualmente"""
     game = db.query(Game).filter(Game.id == price.game_id).first()
     if not game:
         raise HTTPException(status_code=404, detail="Jogo não encontrado")
@@ -44,13 +43,11 @@ def create_price(price: PriceCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=list[PriceResponse])
 def list_prices(db: Session = Depends(get_db)):
-    """Listar todos os preços"""
     return db.query(Price).all()
 
 
 @router.get("/{price_id}", response_model=PriceResponse)
 def get_price(price_id: int, db: Session = Depends(get_db)):
-    """Buscar um preço específico"""
     price = db.query(Price).filter(Price.id == price_id).first()
     if not price:
         raise HTTPException(status_code=404, detail="Preço não encontrado")
@@ -59,19 +56,31 @@ def get_price(price_id: int, db: Session = Depends(get_db)):
 
 @router.get("/game/{game_id}", response_model=list[PriceResponse])
 def get_prices_by_game(game_id: int, db: Session = Depends(get_db)):
-    """Buscar todos os preços de um jogo"""
-    prices = db.query(Price).filter(Price.game_id == game_id).all()
-    if not prices:
-        raise HTTPException(
-            status_code=404,
-            detail="Nenhum preço encontrado para este jogo",
+    # Retorna apenas o preço mais recente por site (sem duplicatas)
+    subq = (
+        db.query(Price.site_id, func.max(Price.checked_at).label("latest"))
+        .filter(Price.game_id == game_id)
+        .group_by(Price.site_id)
+        .subquery()
+    )
+
+    prices = (
+        db.query(Price)
+        .join(
+            subq,
+            (Price.site_id == subq.c.site_id) & (Price.checked_at == subq.c.latest),
         )
+        .filter(Price.game_id == game_id)
+        .all()
+    )
+
+    if not prices:
+        raise HTTPException(status_code=404, detail="Nenhum preço encontrado para este jogo")
     return prices
 
 
 @router.put("/{price_id}", response_model=PriceResponse)
 def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends(get_db)):
-    """Atualizar o preço manualmente"""
     db_price = db.query(Price).filter(Price.id == price_id).first()
     if not db_price:
         raise HTTPException(status_code=404, detail="Preço não encontrado")
@@ -85,7 +94,6 @@ def update_price(price_id: int, price_update: PriceUpdate, db: Session = Depends
 
 @router.delete("/{price_id}")
 def delete_price(price_id: int, db: Session = Depends(get_db)):
-    """Deletar um preço"""
     db_price = db.query(Price).filter(Price.id == price_id).first()
     if not db_price:
         raise HTTPException(status_code=404, detail="Preço não encontrado")
@@ -98,10 +106,9 @@ def delete_price(price_id: int, db: Session = Depends(get_db)):
 @router.get("/game/{game_id}/comparison")
 def compare_prices(game_id: int, db: Session = Depends(get_db)):
     """
-    Comparação automática de preços para um game específico.
-    Usa apenas o preço MAIS RECENTE de cada site para comparar corretamente.
+    Comparação de preços. Funciona mesmo com apenas 1 loja.
     """
-    # Subquery: pega o checked_at mais recente por site para este jogo
+    # Pega o preço mais recente por site
     subq = (
         db.query(Price.site_id, func.max(Price.checked_at).label("latest"))
         .filter(Price.game_id == game_id)
@@ -109,7 +116,6 @@ def compare_prices(game_id: int, db: Session = Depends(get_db)):
         .subquery()
     )
 
-    # Busca apenas os preços mais recentes por site
     prices = (
         db.query(Price)
         .join(
@@ -120,35 +126,37 @@ def compare_prices(game_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    if len(prices) < 2:
+    if not prices:
         raise HTTPException(
             status_code=404,
-            detail="Preços insuficientes para comparar (precisa de pelo menos 2 lojas)",
+            detail="Nenhum preço encontrado para este jogo",
         )
 
-    min_price = min(prices, key=lambda x: x.price)
-    max_price = max(prices, key=lambda x: x.price)
+    # Monta lista com nome do site
+    precos_com_site = []
+    for p in prices:
+        site = db.query(Site).filter(Site.id == p.site_id).first()
+        precos_com_site.append({
+            "site": site.name if site else f"Site #{p.site_id}",
+            "preco": float(p.price),
+            "currency": p.currency or "USD",
+        })
 
-    menor_valor = float(min_price.price)
-    maior_valor = float(max_price.price)
-    economy = maior_valor - menor_valor
-
-    site = db.query(Site).filter(Site.id == min_price.site_id).first()
+    min_item = min(precos_com_site, key=lambda x: x["preco"])
+    max_item = max(precos_com_site, key=lambda x: x["preco"])
 
     return {
-        "menor_preco": menor_valor,
-        "maior_preco": maior_valor,
-        "diferenca": economy,
-        "economia": economy,
-        "site_melhor_preco": site.name if site else "Desconhecido",
+        "menor_preco": min_item["preco"],
+        "maior_preco": max_item["preco"],
+        "diferenca": max_item["preco"] - min_item["preco"],
+        "economia": max_item["preco"] - min_item["preco"],
+        "site_melhor_preco": min_item["site"],
+        "todos_os_precos": precos_com_site,
     }
 
 
 @router.post("/refresh/{game_id}")
 def refresh_prices_by_game(game_id: int, db: Session = Depends(get_db)):
-    """
-    Busca e atualiza automaticamente os preços de um jogo na API externa (CheapShark).
-    """
     resultado = update_game_prices(game_id, db)
     if "erro" in resultado:
         raise HTTPException(status_code=404, detail=resultado["erro"])
@@ -156,10 +164,107 @@ def refresh_prices_by_game(game_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh/all")
+
+@router.get("/game/{game_id}/history")
+def get_price_history(game_id: int, db: Session = Depends(get_db)):
+    """
+    Retorna o histórico completo de preços de um jogo,
+    incluindo loja, valor, moeda, fonte e data da coleta.
+    """
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Jogo não encontrado")
+
+    prices = (
+        db.query(Price, Site.name.label("site_name"))
+        .join(Site, Site.id == Price.site_id)
+        .filter(Price.game_id == game_id)
+        .order_by(Price.checked_at.asc())
+        .all()
+    )
+
+    if not prices:
+        raise HTTPException(status_code=404, detail="Nenhum histórico encontrado para este jogo")
+
+    return [
+        {
+            "id": price.id,
+            "game_id": price.game_id,
+            "site_id": price.site_id,
+            "site_name": site_name,
+            "price": float(price.price),
+            "currency": price.currency,
+            "source": price.source,
+            "checked_at": price.checked_at,
+            "created_at": price.created_at,
+        }
+        for price, site_name in prices
+    ]
+
+
+@router.get("/game/{game_id}/insight")
+def get_price_insight(game_id: int, db: Session = Depends(get_db)):
+    """
+    Gera um insight simples sobre o momento de compra com base
+    no menor preço histórico e no menor preço atual entre lojas.
+    """
+    game = db.query(Game).filter(Game.id == game_id).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Jogo não encontrado")
+
+    all_prices = db.query(Price).filter(Price.game_id == game_id).all()
+    if not all_prices:
+        raise HTTPException(status_code=404, detail="Nenhum preço encontrado para este jogo")
+
+    historical_low = min(all_prices, key=lambda x: x.price)
+    historical_low_value = float(historical_low.price)
+
+    subq = (
+        db.query(Price.site_id, func.max(Price.checked_at).label("latest"))
+        .filter(Price.game_id == game_id)
+        .group_by(Price.site_id)
+        .subquery()
+    )
+
+    latest_prices = (
+        db.query(Price)
+        .join(
+            subq,
+            (Price.site_id == subq.c.site_id) & (Price.checked_at == subq.c.latest),
+        )
+        .filter(Price.game_id == game_id)
+        .all()
+    )
+
+    if not latest_prices:
+        raise HTTPException(status_code=404, detail="Sem preços atuais para análise")
+
+    current_best = min(latest_prices, key=lambda x: x.price)
+    current_best_value = float(current_best.price)
+
+    historical_site = db.query(Site).filter(Site.id == historical_low.site_id).first()
+    current_site = db.query(Site).filter(Site.id == current_best.site_id).first()
+
+    is_good_time = current_best_value <= historical_low_value
+
+    return {
+        "game_id": game.id,
+        "game_title": game.title,
+        "historical_low": historical_low_value,
+        "historical_low_site": historical_site.name if historical_site else "Desconhecido",
+        "historical_low_date": historical_low.checked_at,
+        "current_best": current_best_value,
+        "current_best_site": current_site.name if current_site else "Desconhecido",
+        "is_good_time_to_buy": is_good_time,
+        "message": (
+            "Ótimo momento para comprar! O preço atual está no menor nível histórico."
+            if is_good_time
+            else "Ainda não é o melhor momento: o preço atual está acima do menor valor histórico."
+        ),
+    }
+
+
 def refresh_all_prices():
-    """
-    Busca e atualiza automaticamente os preços de TODOS os jogos na API externa.
-    """
     resultados = update_all_games()
     return {
         "status": "concluído",
