@@ -157,7 +157,7 @@ def compare_prices(game_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh/all")
-def refresh_all_prices_route():
+def refresh_all_prices():
     """Atualiza preços de todos os jogos via CheapShark"""
     resultados = update_all_games()
     return {

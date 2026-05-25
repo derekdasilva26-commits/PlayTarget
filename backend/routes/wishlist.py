@@ -82,12 +82,12 @@ def get_wishlist_alerts(db: Session = Depends(get_db)):
         if opportunity:
             message = (
                 f"✅ Preço atual ({current_best_price:.2f} {currency}) "
-                f"está abaixo do seu alvo de R$ {item.target_price:.2f}!"
+                f"está abaixo do seu alvo de {item.target_price:.2f}!"
             )
         elif current_best_price is not None:
             message = (
                 f"Melhor preço atual: {current_best_price:.2f} {currency}. "
-                f"Ainda acima do preço-alvo de R$ {item.target_price:.2f}."
+                f"Ainda acima do preço-alvo de {item.target_price:.2f}."
             )
         else:
             message = "Nenhum preço disponível para este jogo ainda."
