@@ -14,7 +14,7 @@ fetch(`${API_URL}/health`)
      document.getElementById('api-status').textContent = 'OFFLINE';
   });
   
-const statusEl = document.getElementById("status");
+const statusEl = document.getElementById("api-status");
 
 const gamesList = document.getElementById("gamesList");
 const gameForm = document.getElementById("gameForm");
@@ -56,6 +56,15 @@ let historyChartInstance = null;
 function setStatus(ok) {
   if (!statusEl) return;
   statusEl.textContent = ok ? "ONLINE" : "OFFLINE";
+}
+
+// Converte um preço para BRL apenas se a moeda for USD.
+// Preços já em BRL são retornados sem conversão.
+function toBRL(price, currency) {
+  if ((currency || "USD").toUpperCase() === "USD") {
+    return (Number(price) * USD_TO_BRL).toFixed(2);
+  }
+  return Number(price).toFixed(2);
 }
 
 async function checkBackend() {
@@ -375,8 +384,10 @@ async function loadPrices(gameId) {
     .map((p) => {
       const siteName = sitesCache.get(p.site_id)?.name || `Site #${p.site_id}`;
       const usd = Number(p.price).toFixed(2);
-      const brl = (Number(p.price) * USD_TO_BRL).toFixed(2);
-      const value = `USD ${usd} (R$ ${brl})`;
+      const brl = toBRL(p.price, p.currency);
+      const value = p.currency === "BRL"
+        ? `R$ ${brl}`
+        : `USD ${usd} (R$ ${brl})`;
 
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #f0f0f0;">
@@ -486,11 +497,12 @@ async function buscarComparacao(gameId) {
 
     const dados = await response.json();
     const infoDiv = document.getElementById("priceResult");
+    const currency = dados.currency || "USD";
 
-    const menorBRL = (dados.menor_preco * USD_TO_BRL).toFixed(2);
-    const maiorBRL = (dados.maior_preco * USD_TO_BRL).toFixed(2);
-    const diferencaBRL = (dados.diferenca * USD_TO_BRL).toFixed(2);
-    const economiaBRL = (dados.economia * USD_TO_BRL).toFixed(2);
+    const menorBRL = toBRL(dados.menor_preco, currency);
+    const maiorBRL = toBRL(dados.maior_preco, currency);
+    const diferencaBRL = toBRL(dados.diferenca, currency);
+    const economiaBRL = toBRL(dados.economia, currency);
 
     document.getElementById("menor-preco").innerHTML =
       `USD ${dados.menor_preco.toFixed(2)} (R$ ${menorBRL}) - ${dados.site_melhor_preco}`;
@@ -711,7 +723,7 @@ async function fetchWishlistAlerts() {
 
     wishlistList.innerHTML = items.map((item) => {
       const bestPriceBRL = item.current_best_price !== null
-        ? (item.current_best_price * USD_TO_BRL).toFixed(2)
+        ? toBRL(item.current_best_price, item.currency)
         : null;
 
       const targetBRL = Number(item.target_price).toFixed(2);
@@ -863,7 +875,7 @@ function renderHistoryList(items) {
   }
 
   historyList.innerHTML = items.map((item) => {
-    const priceBRL = (Number(item.price) * USD_TO_BRL).toFixed(2);
+    const priceBRL = toBRL(item.price, item.currency);
     const checkedAt = new Date(item.checked_at).toLocaleString("pt-BR");
 
     return `
@@ -895,7 +907,7 @@ function renderHistoryChart(items) {
     return dt.toLocaleString("pt-BR");
   });
 
-  const valuesBRL = items.map((item) => Number(item.price) * USD_TO_BRL);
+  const valuesBRL = items.map((item) => Number(toBRL(item.price, item.currency)));
 
   historyChartInstance = new Chart(ctx, {
     type: "line",
@@ -962,8 +974,8 @@ function renderHistoryChart(items) {
 function renderHistoryInsight(insight) {
   if (!historyInsight) return;
 
-  const historicalLowBRL = (Number(insight.historical_low) * USD_TO_BRL).toFixed(2);
-  const currentBestBRL = (Number(insight.current_best) * USD_TO_BRL).toFixed(2);
+  const historicalLowBRL = toBRL(insight.historical_low, insight.historical_low_currency);
+  const currentBestBRL = toBRL(insight.current_best, insight.current_best_currency);
 
   const status = insight.is_good_time_to_buy
     ? `<span style="color:#34d399; font-weight:bold;">✅ Ótimo momento para comprar</span>`
