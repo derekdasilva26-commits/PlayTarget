@@ -6,9 +6,12 @@ from backend.database import Base, engine
 from backend.models.game import Game
 from backend.models.site import Site
 from backend.models.price import Price
+from backend.models.wishlist import Wishlist
 from backend.routes.games import router as games_router
 from backend.routes.sites import router as sites_router
 from backend.routes.price import router as price_router
+from backend.routes.wishlist import router as wishlist_router
+from backend.routes.exchange_rate import router as exchange_rate_router
 from backend.services.price_updater import update_all_games
 
 app = FastAPI(
@@ -33,6 +36,8 @@ Base.metadata.create_all(bind=engine)
 app.include_router(games_router)
 app.include_router(sites_router)
 app.include_router(price_router)
+app.include_router(wishlist_router)
+app.include_router(exchange_rate_router)
 
 # ✅ Agendador: atualiza preços automaticamente a cada 1 hora
 scheduler = BackgroundScheduler()

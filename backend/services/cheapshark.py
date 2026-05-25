@@ -30,13 +30,10 @@ def fetch_prices(title: str) -> list[dict]:
         response.raise_for_status()
         games = response.json()
 
-        print(f"DEBUG cheapshark >>> games encontrados: {games}")
-
         if not games:
             return []
 
         game_id = games[0]["gameID"]
-        print(f"DEBUG cheapshark >>> usando gameID: {game_id}")
 
         # Busca detalhes do jogo (incluindo preços por loja)
         detail_response = httpx.get(
@@ -49,12 +46,10 @@ def fetch_prices(title: str) -> list[dict]:
         detail = detail_response.json()
 
         deals = detail.get("deals", [])
-        print(f"DEBUG cheapshark >>> deals: {deals}")
 
         results = []
         for deal in deals:
             store_id = str(deal.get("storeID", ""))
-            print(f"DEBUG cheapshark >>> storeID: {store_id}")
             mapped_name = STORE_NAME_MAP.get(store_id)
             if mapped_name:
                 try:
@@ -67,12 +62,11 @@ def fetch_prices(title: str) -> list[dict]:
                 except (ValueError, TypeError):
                     continue
 
-        print(f"DEBUG cheapshark >>> results finais: {results}")
         return results
 
     except httpx.RequestError as e:
-        print(f"DEBUG cheapshark >>> httpx.RequestError: {e}")
+        print(f"CheapShark request error: {e}")
         return []
     except Exception as e:
-        print(f"DEBUG cheapshark >>> Exception: {e}")
+        print(f"CheapShark unexpected error: {e}")
         return []

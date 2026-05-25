@@ -151,7 +151,19 @@ def compare_prices(game_id: int, db: Session = Depends(get_db)):
         "diferenca": max_item["preco"] - min_item["preco"],
         "economia": max_item["preco"] - min_item["preco"],
         "site_melhor_preco": min_item["site"],
+        "currency": min_item["currency"],
         "todos_os_precos": precos_com_site,
+    }
+
+
+@router.post("/refresh/all")
+def refresh_all_prices_route():
+    """Atualiza preços de todos os jogos via CheapShark"""
+    resultados = update_all_games()
+    return {
+        "status": "concluído",
+        "total_jogos_processados": len(resultados),
+        "detalhes": resultados,
     }
 
 
@@ -162,8 +174,6 @@ def refresh_prices_by_game(game_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=resultado["erro"])
     return resultado
 
-
-@router.post("/refresh/all")
 
 @router.get("/game/{game_id}/history")
 def get_price_history(game_id: int, db: Session = Depends(get_db)):
@@ -253,21 +263,14 @@ def get_price_insight(game_id: int, db: Session = Depends(get_db)):
         "historical_low": historical_low_value,
         "historical_low_site": historical_site.name if historical_site else "Desconhecido",
         "historical_low_date": historical_low.checked_at,
+        "historical_low_currency": historical_low.currency or "USD",
         "current_best": current_best_value,
         "current_best_site": current_site.name if current_site else "Desconhecido",
+        "current_best_currency": current_best.currency or "USD",
         "is_good_time_to_buy": is_good_time,
         "message": (
             "Ótimo momento para comprar! O preço atual está no menor nível histórico."
             if is_good_time
             else "Ainda não é o melhor momento: o preço atual está acima do menor valor histórico."
         ),
-    }
-
-
-def refresh_all_prices():
-    resultados = update_all_games()
-    return {
-        "status": "concluído",
-        "total_jogos_processados": len(resultados),
-        "detalhes": resultados,
     }
